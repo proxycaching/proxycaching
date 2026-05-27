@@ -1,0 +1,14 @@
+{
+  "name": "tester",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "undici": "^7.26.0"
+  }
+}

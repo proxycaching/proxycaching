@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+config/*.local.json
+
+# Cache files
+podcache/
+
+# Certificates
+config/mitm/proxy-ca
+.http-mitm-proxy

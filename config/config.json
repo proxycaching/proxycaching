@@ -1,0 +1,29 @@
+{
+  "proxy": {
+    "port": 8080,
+    "adminPort": 8081,
+    "podcachePath": "./podcache",
+    "adminEnabled": true,
+    "mitmEnabled": true,
+    "encryption": {
+      "enabled": false,
+      "algorithm": "aes-256-gcm",
+      "keyEnvVar": "PODCACHE_ENCRYPTION_KEY"
+    },
+    "logging": {
+      "level": "info"
+    }
+  },
+  "rules": [
+    {
+      "name": "default",
+      "match": {
+        "method": ["GET", "POST"],
+        "domains": ["*"],
+        "paths": ["*"],
+        "query": {}
+      },
+      "cache": true
+    }
+  ]
+}

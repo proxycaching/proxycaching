@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proxy Cache Admin</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #f7f7f7; }
+    pre { white-space: pre-wrap; word-wrap: break-word; background: #f4f4f4; padding: 12px; border: 1px solid #ddd; }
+    button { margin: 4px; padding: 6px 10px; cursor: pointer; }
+    button:hover { background: #e0e0e0; }
+    .ca-section { border: 1px solid #ddd; padding: 12px; margin-top: 12px; background: #fafafa; }
+    .ca-info { margin: 8px 0; }
+    .ca-trusted { color: green; font-weight: bold; }
+    .ca-untrusted { color: red; font-weight: bold; }
+    .ca-fingerprint { font-family: monospace; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <h1>Proxy Cache Admin</h1>
+
+  <section class="ca-section" id="ca-section" style="display:none;">
+    <h2>🔐 MITM HTTPS Caching</h2>
+    <div class="ca-info">
+      <strong>CA Fingerprint (SHA-256):</strong>
+      <div class="ca-fingerprint" id="ca-fingerprint">Loading...</div>
+    </div>
+    <div class="ca-info">
+      <strong>Trust Status:</strong>
+      <span id="ca-status">Loading...</span>
+    </div>
+    <div class="ca-info">
+      <p><em>To install the CA certificate, run from an admin command prompt:</em></p>
+      <code style="background: #f0f0f0; padding: 4px 8px; border-radius: 3px; display: block; margin: 8px 0;">npm run mitm-install</code>
+      <button onclick="exportCA()" style="background: #4CAF50; color: white;">Download CA Certificate</button>
+    </div>
+    <div id="ca-message" style="margin-top: 12px; display: none; padding: 8px; background: #e8f5e9; border-left: 4px solid green;"></div>
+  </section>
+
+  <section>
+    <h2>Cache Entries</h2>
+    <table id="cache-table">
+      <thead>
+        <tr>
+          <th>Key</th>
+          <th>URL</th>
+          <th>Method</th>
+          <th>Hits</th>
+          <th>Last Access</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Health & Diagnostics</h2>
+    <pre id="status">Loading status...</pre>
+  </section>
+
+  <section>
+    <h2>Details</h2>
+    <pre id="details">Select an entry to view details.</pre>
+  </section>
+
+  <script>
+    async function loadCAInfo() {
+      try {
+        const response = await fetch('/ca-info');
+        if (!response.ok) return;
+
+        const caInfo = await response.json();
+        document.getElementById('ca-section').style.display = 'block';
+        document.getElementById('ca-fingerprint').textContent = caInfo.fingerprint;
+        document.getElementById('ca-status').innerHTML = caInfo.isTrusted
+          ? '<span class="ca-trusted">✓ Trusted</span>'
+          : '<span class="ca-untrusted">✗ Not Trusted</span>';
+      } catch (error) {
+        // CA not available, hide section
+      }
+    }
+
+    async function installCA() {
+      try {
+        const response = await fetch('/ca-install', { method: 'POST' });
+        if (!response.ok) {
+          const error = await response.json();
+          showCAMessage('Error: ' + error.details, false);
+          return;
+        }
+
+        const result = await response.json();
+        showCAMessage(result.message, true);
+        setTimeout(() => loadCAInfo(), 1000);
+      } catch (error) {
+        showCAMessage('Installation failed: ' + error.message, false);
+      }
+    }
+
+    async function exportCA() {
+      try {
+        const response = await fetch('/ca-export');
+        if (!response.ok) {
+          throw new Error('Export failed');
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'mitm-ca.crt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        showCAMessage('Export failed: ' + error.message, false);
+      }
+    }
+
+    function showCAMessage(message, success) {
+      const elem = document.getElementById('ca-message');
+      elem.textContent = message;
+      elem.style.display = 'block';
+      elem.style.background = success ? '#e8f5e9' : '#ffebee';
+      elem.style.borderLeftColor = success ? 'green' : 'red';
+      setTimeout(() => {
+        elem.style.display = 'none';
+      }, 5000);
+    }
+
+    async function loadStatus() {
+      try {
+        const response = await fetch('/status');
+        const data = await response.json();
+        document.getElementById('status').textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        document.getElementById('status').textContent = 'Unable to load status.';
+      }
+    }
+
+    async function loadCache() {
+      const response = await fetch('/cache');
+      const data = await response.json();
+      const tbody = document.querySelector('#cache-table tbody');
+      tbody.innerHTML = '';
+
+      data.forEach((item) => {
+        const row = document.createElement('tr');
+        row.innerHTML =
+          '<td>' + item.key + '</td>' +
+          '<td>' + item.item.requestUrl + '</td>' +
+          '<td>' + item.item.requestMethod + '</td>' +
+          '<td>' + item.item.hitCount + '</td>' +
+          '<td>' + item.item.lastAccessedAt + '</td>' +
+          '<td><button data-key="' + item.key + '">View</button></td>';
+
+        const button = row.querySelector('button');
+        if (button) {
+          button.addEventListener('click', () => loadDetails(item.key));
+        }
+
+        tbody.appendChild(row);
+      });
+    }
+
+    async function loadDetails(key) {
+      const response = await fetch('/cache/' + encodeURIComponent(key));
+      if (!response.ok) {
+        document.getElementById('details').textContent = 'Unable to load entry details.';
+        return;
+      }
+      const item = await response.json();
+      document.getElementById('details').textContent = JSON.stringify(item, null, 2);
+    }
+
+    loadCAInfo();
+    loadStatus();
+    loadCache();
+  </script>
+</body>
+</html>

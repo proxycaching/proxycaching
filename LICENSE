@@ -1,0 +1,208 @@
+proxycaching Source Available License
+Version 1.0
+
+Copyright (c) 2026 proxycaching. All rights reserved.
+
+================================================================================
+
+PREAMBLE
+
+This License governs the use, reproduction, modification, and distribution of
+the proxycaching software and all associated documentation, configuration files,
+and materials (collectively, the "Software").
+
+proxycaching is made available under a dual-use model: free for personal and
+open-source use, and commercially licensed for business and for-profit use.
+This approach allows individual developers and the open-source community to
+benefit from the Software at no cost, while ensuring that organizations deriving
+commercial value from it contribute to its continued development.
+
+================================================================================
+
+1. DEFINITIONS
+
+1.1  "Licensor" means proxycaching, the original author and copyright holder of
+     the Software, identifiable on GitHub at github.com/proxycaching.
+
+1.2  "Software" means the proxycaching source code, binaries, documentation,
+     configuration files, and any related materials made available under this
+     License.
+
+1.3  "Licensee" means any individual or legal entity exercising rights granted
+     by this License.
+
+1.4  "Personal Use" means use of the Software solely by a private individual for
+     non-commercial, non-professional purposes, entirely outside of any
+     employment, contractor engagement, or business activity.
+
+1.5  "Open-Source Project" means a project whose complete source code is
+     publicly available under an OSI-approved open-source license, and which
+     does not generate revenue, is not owned or controlled by a for-profit
+     entity, and is not used as part of a commercial product or service.
+
+1.6  "Commercial Use" means any use of the Software by or on behalf of a
+     for-profit entity, regardless of whether the Software is used in a product
+     sold to third parties or solely for internal purposes. This includes,
+     without limitation: use by employees or contractors during the course of
+     their work, use in internal development or testing pipelines, use in CI/CD
+     systems operated by a for-profit company, and use in any environment owned
+     or controlled by a for-profit company.
+
+1.7  "Modification" means any alteration, addition to, or derivative work based
+     upon the Software.
+
+1.8  "Distribute" means to make the Software available to any third party by any
+     means, including but not limited to publishing, uploading, or transmitting.
+
+================================================================================
+
+2. GRANT OF RIGHTS — NON-COMMERCIAL USE
+
+Subject to the terms and conditions of this License, the Licensor hereby grants
+the Licensee a worldwide, royalty-free, non-exclusive, non-transferable license
+to:
+
+  - use, copy, and run the Software for Personal Use;
+  - use, copy, modify, and distribute the Software solely within an Open-Source
+    Project;
+  - create Modifications of the Software, provided that all Modifications are
+    distributed under this same License and include a prominent notice stating
+    that changes were made, the nature of those changes, and the date of the
+    changes.
+
+This license is granted at no charge for the categories of use defined above.
+
+================================================================================
+
+3. COMMERCIAL USE — LICENSE REQUIRED
+
+Any Commercial Use of the Software, as defined in Section 1.6, is strictly
+prohibited without a valid, separately executed Commercial License Agreement
+obtained from the Licensor.
+
+To obtain a Commercial License, contact:
+
+    proxycaching@interia.pl
+
+The following are examples of use that constitute Commercial Use and require a
+paid license (this list is illustrative, not exhaustive):
+
+  - use of the Software by any employee or contractor within a for-profit
+    company, including during development, testing, or CI/CD pipelines;
+  - integration of the Software into any product, service, or tool that is
+    offered commercially, whether or not the Software itself is the product
+    being sold;
+  - use of the Software to reduce costs or increase productivity within a
+    for-profit organization;
+  - use of the Software on infrastructure owned, leased, or operated by a
+    for-profit entity.
+
+The number of employees or revenue of the company is irrelevant. A single
+developer using the Software at a for-profit company constitutes Commercial Use.
+
+================================================================================
+
+4. CONDITIONS APPLICABLE TO ALL USE
+
+Regardless of whether use is Non-Commercial or Commercial, the following
+conditions apply at all times:
+
+4.1  Attribution. The Licensee must retain, in all copies or substantial
+     portions of the Software, the above copyright notice, this License, and
+     all notices of authorship.
+
+4.2  No Misrepresentation. The Licensee must not represent the Software as
+     their own original work, must not remove or obscure any authorship notices,
+     and must not use the name "proxycaching" to endorse or promote products
+     derived from the Software without prior written consent from the Licensor.
+
+4.3  No Sublicensing. The Licensee may not sublicense the Software. Any
+     distribution to third parties must include this License in its entirety,
+     unmodified.
+
+4.4  No Circumvention. The Licensee must not create a substantially similar
+     product for the purpose of circumventing the Commercial Use requirement of
+     this License.
+
+================================================================================
+
+5. MODIFICATIONS AND DERIVATIVE WORKS
+
+5.1  Any Modification distributed to third parties must be licensed under this
+     same License, in its entirety and without modification.
+
+5.2  The Licensee must include a prominent notice in all Modifications stating:
+     (a) that the Software has been modified; (b) a description of the nature of
+     the changes; and (c) the date on which the changes were made.
+
+5.3  Modifications for personal or internal use that are not distributed to
+     third parties are not subject to the disclosure requirements of 5.2, but
+     remain subject to all other terms of this License, including the Commercial
+     Use restriction.
+
+================================================================================
+
+6. DISCLAIMER OF WARRANTIES
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT.
+
+THE LICENSOR DOES NOT WARRANT THAT THE SOFTWARE WILL MEET THE LICENSEE'S
+REQUIREMENTS, OPERATE WITHOUT INTERRUPTION, OR BE ERROR-FREE. THE ENTIRE RISK
+AS TO THE QUALITY AND PERFORMANCE OF THE SOFTWARE IS WITH THE LICENSEE.
+
+================================================================================
+
+7. LIMITATION OF LIABILITY
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE
+LICENSOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+OR CONSEQUENTIAL DAMAGES (INCLUDING BUT NOT LIMITED TO LOSS OF DATA, LOSS OF
+PROFITS, BUSINESS INTERRUPTION, OR PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES)
+ARISING OUT OF OR IN CONNECTION WITH THE USE OR INABILITY TO USE THE SOFTWARE,
+EVEN IF THE LICENSOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+================================================================================
+
+8. TERMINATION
+
+8.1  This License and the rights granted hereunder will terminate automatically
+     if the Licensee fails to comply with any term of this License.
+
+8.2  Upon termination, the Licensee must cease all use and distribution of the
+     Software and destroy all copies in their possession.
+
+8.3  Sections 4, 6, 7, and 9 shall survive any termination of this License.
+
+================================================================================
+
+9. GOVERNING LAW AND JURISDICTION
+
+This License shall be governed by and construed in accordance with the laws of
+Poland, without regard to its conflict of law principles. Any disputes arising
+under or in connection with this License shall be subject to the exclusive
+jurisdiction of the courts of Poland.
+
+================================================================================
+
+10. ENTIRE AGREEMENT
+
+This License constitutes the entire agreement between the Licensor and the
+Licensee with respect to the Software and supersedes all prior or
+contemporaneous understandings, agreements, negotiations, representations, and
+warranties, both written and oral, with respect to the Software.
+
+The Licensor reserves the right to release future versions of the Software under
+different license terms. Such changes will not affect the rights previously
+granted under any prior version of this License, except where explicitly stated.
+
+================================================================================
+
+COMMERCIAL LICENSING INQUIRIES
+
+  Email:  proxycaching@interia.pl
+  GitHub: github.com/proxycaching
+
+================================================================================
+proxycaching Source Available License v1.0 — 2026

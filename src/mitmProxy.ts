@@ -1,4 +1,4 @@
-import Proxy = require('http-mitm-proxy');
+import Proxy from 'http-mitm-proxy';
 import path from 'path';
 import { CacheStore } from './cacheStore';
 import { AppConfig, CONFIG_DIR } from './config';
@@ -7,9 +7,9 @@ import { shouldCache } from './rulesEngine';
 import { URL } from 'url';
 import { normalizeHeaders as normalize } from './proxyUtils';
 import { IncomingMessage } from 'http';
-import { MitmInstaller } from './mitmInstaller';
+import { buildCacheKey } from './proxyUtils';
 
-export function startMitmProxy(config: AppConfig, cacheStore: CacheStore, logger: Logger, mitmInstaller: MitmInstaller) {
+export function startMitmProxy(config: AppConfig, cacheStore: CacheStore, logger: Logger) {
   const proxyCaDir = path.join(CONFIG_DIR, 'mitm', 'proxy-ca');
   
   const proxy = Proxy();
@@ -42,35 +42,6 @@ export function startMitmProxy(config: AppConfig, cacheStore: CacheStore, logger
     cb(null, chunk);
   });
 
-  if (method === 'GET' || method === 'HEAD') {
-    const requestHeaders = normalize(clientReq.headers as any);
-    const cacheKey = JSON.stringify({ method, url: targetUrl, headers: requestHeaders, body: '' });
-
-    cacheStore.get(cacheKey).then((cached) => {
-      if (cached) {
-        const responseBody = cached.response.body
-          ? cached.response.bodyEncoding === 'base64'
-            ? Buffer.from(cached.response.body, 'base64')
-            : Buffer.from(cached.response.body, 'utf8')
-          : undefined;
-
-        ctx.proxyToClientResponse.writeHead(cached.response.status, cached.response.headers);
-        ctx.proxyToClientResponse.end(responseBody);
-        logger.info('MITM cache hit', { url: targetUrl });
-        // NIE wołamy callback() – odpowiedź już wysłana
-        return;
-      }
-
-      callback(); // cache miss – przepuść do serwera
-    }).catch((error) => {
-      logger.error('MITM cache lookup error', { error: String(error) });
-      callback();
-    });
-    return; // ← kluczowe: wyjdź, NIE wołaj callback() poniżej
-  }
-
-  // POST/PUT/DELETE/etc. – rejestrujemy handlery i wołamy callback()
-  // żeby proxy zaczęło przekazywać dane do serwera
   ctx.onRequestEnd(async (ctx2: any, cb: Function) => {
     try {
       const requestBody = Buffer.concat(reqChunks);
@@ -88,31 +59,49 @@ export function startMitmProxy(config: AppConfig, cacheStore: CacheStore, logger
         else query[key] = [query[key] as string, value];
       }
 
-      const requestContext = { method, hostname: urlObj.hostname, path: urlObj.pathname, query, headers: requestHeaders };
+      const requestContext = { method, hostname: urlObj.hostname, path: urlObj.pathname, query, headers: requestHeaders, body: requestBodyStr || undefined };
       const cacheAllowed = shouldCache(requestContext, config.rules);
 
       if (cacheAllowed) {
-        const key = JSON.stringify({ method, url: targetUrl, headers: requestHeaders, body: requestBodyStr || '' });
+        const key = buildCacheKey(method, targetUrl, requestHeaders, requestBodyStr || undefined);
         const cached = await cacheStore.get(key);
 
         if (cached) {
-          const responseBody = cached.response.body
-            ? cached.response.bodyEncoding === 'base64'
-              ? Buffer.from(cached.response.body, 'base64')
-              : Buffer.from(cached.response.body, 'utf8')
-            : undefined;
+          const isStaleCompressedEntry = hasContentEncoding(cached.response.headers) && cached.response.bodyEncoding !== 'base64';
+          if (isStaleCompressedEntry) {
+            logger.warn('Skipping stale compressed cache entry', { url: targetUrl, key });
+          } else {
+            const responseBodyEncoding = cached.response.bodyEncoding === 'base64' || hasContentEncoding(cached.response.headers)
+              ? 'base64'
+              : 'utf8';
+            const responseBody = cached.response.body
+              ? responseBodyEncoding === 'base64'
+                ? Buffer.from(cached.response.body, 'base64')
+                : Buffer.from(cached.response.body, 'utf8')
+              : undefined;
 
-          ctx.proxyToClientResponse.writeHead(cached.response.status, cached.response.headers);
-          ctx.proxyToClientResponse.end(responseBody);
-          logger.info('MITM cache hit', { url: targetUrl });
+            const hitHeaders = removeHopByHopHeaders(cached.response.headers);
+            delete hitHeaders['content-length'];
+            if (responseBodyEncoding !== 'base64') {
+              delete hitHeaders['content-encoding'];
+            }
 
-          if (ctx.proxyToServerRequest) {
-            ctx.proxyToServerRequest.on('error', () => undefined);
-            ctx.proxyToServerRequest.destroy();
+            ctx.proxyToClientResponse.writeHead(cached.response.status, hitHeaders);
+            ctx.proxyToClientResponse.end(responseBody);
+            logger.info('MITM cache hit', { url: targetUrl });
+
+            if (ctx.proxyToServerRequest) {
+              ctx.proxyToServerRequest.on('error', () => undefined);
+              ctx.proxyToServerRequest.destroy();
+            }
+            if (ctx.serverToProxyResponse) {
+              ctx.serverToProxyResponse.on('error', () => undefined);
+              ctx.serverToProxyResponse.destroy();
+            }
+
+            cb(null);
+            return;
           }
-
-          cb(null);
-          return;
         }
       }
     } catch (error) {
@@ -123,16 +112,18 @@ export function startMitmProxy(config: AppConfig, cacheStore: CacheStore, logger
   });
 
   ctx.onResponseEnd((ctx2: any, cb: Function) => {
-    cb(); // wywołaj CB od razu, zapis do cache rób asynchronicznie
+    cb();
 
     (async () => {
       try {
         const requestBody = Buffer.concat(reqChunks);
         const responseBody = Buffer.concat(resChunks);
         const reqContentType = String(clientReq.headers['content-type'] || '');
+        const reqContentEncoding = String(clientReq.headers['content-encoding'] || '');
         const resContentType = String(ctx.serverToProxyResponse?.headers['content-type'] || '');
-        const requestBodyStr = isTextMime(reqContentType) ? requestBody.toString('utf8') : requestBody.toString('base64');
-        const responseBodyStr = isTextMime(resContentType) ? responseBody.toString('utf8') : responseBody.toString('base64');
+        const resContentEncoding = String(ctx.serverToProxyResponse?.headers['content-encoding'] || '');
+        const requestBodyData = getBodyString(requestBody, reqContentType, reqContentEncoding);
+        const responseBodyData = getBodyString(responseBody, resContentType, resContentEncoding);
         const requestHeaders = normalize(clientReq.headers as any);
         const responseHeaders = normalize(ctx.serverToProxyResponse?.headers || {});
 
@@ -144,23 +135,23 @@ export function startMitmProxy(config: AppConfig, cacheStore: CacheStore, logger
           else query[key] = [query[key] as string, value];
         }
 
-        const requestContext = { method, hostname: urlObj.hostname, path: urlObj.pathname, query, headers: requestHeaders };
+        const requestContext = { method, hostname: urlObj.hostname, path: urlObj.pathname, query, headers: requestHeaders, body: requestBodyData.body || undefined };
         const cacheAllowed = shouldCache(requestContext, config.rules);
 
         if (cacheAllowed) {
-          const key = JSON.stringify({ method, url: targetUrl, headers: requestHeaders, body: requestBodyStr || '' });
+          const key = buildCacheKey(method, targetUrl, requestHeaders, requestBodyData.body || undefined);
           const entry = {
             id: '',
             request: {
               method, url: targetUrl, headers: requestHeaders,
-              body: requestBodyStr || undefined,
-              bodyEncoding: isTextMime(reqContentType) ? 'utf8' : 'base64',
+              body: requestBodyData.body || undefined,
+              bodyEncoding: requestBodyData.bodyEncoding,
             },
             response: {
               status: ctx.serverToProxyResponse?.statusCode || 0,
               headers: responseHeaders,
-              body: responseBodyStr || undefined,
-              bodyEncoding: isTextMime(resContentType) ? 'utf8' : 'base64',
+              body: responseBodyData.body || undefined,
+              bodyEncoding: responseBodyData.bodyEncoding,
             },
             createdAt: new Date().toISOString(),
             lastAccessedAt: new Date().toISOString(),
@@ -177,27 +168,53 @@ export function startMitmProxy(config: AppConfig, cacheStore: CacheStore, logger
     })();
   });
 
-  callback(); // tylko dla non-GET/HEAD, po zarejestrowaniu handlerów
+  callback();
 });
 
   proxy.listen({ port: config.proxy.port, sslCaDir: proxyCaDir, forceSNI: true }, async () => {
     logger.info(`MITM proxy listening on port ${config.proxy.port}`);
-
-    await new Promise(r => setTimeout(r, 500));
-
-    await mitmInstaller.initialize();
-
-    if (process.platform === 'win32') {
-      try {
-        await mitmInstaller.ensureCAInstalled();
-      } catch (error) {
-        logger.warn('Automatic Windows MITM CA installation was not completed.', { error: String(error) });
-        mitmInstaller.logFirstRunInstructions();
-      }
-    } else {
-      mitmInstaller.logFirstRunInstructions();
-    }
   });
+}
+
+function getBodyString(buffer: Buffer | undefined, contentType?: string, contentEncoding?: string) {
+  if (!buffer) {
+    return { body: undefined };
+  }
+
+  const encoding = contentEncoding?.toLowerCase();
+  const isCompressed = encoding && encoding !== 'identity';
+  if (isCompressed || !isTextMime(contentType)) {
+    return { body: buffer.toString('base64'), bodyEncoding: 'base64' };
+  }
+
+  return { body: buffer.toString('utf8'), bodyEncoding: 'utf8' };
+}
+
+function removeHopByHopHeaders(headers: Record<string, string | string[]>) {
+  const excluded = new Set([
+    'connection',
+    'keep-alive',
+    'proxy-authenticate',
+    'proxy-authorization',
+    'te',
+    'trailers',
+    'transfer-encoding',
+    'upgrade',
+  ]);
+  const result: Record<string, string | string[]> = {};
+
+  for (const [key, value] of Object.entries(headers)) {
+    if (!excluded.has(key.toLowerCase()) && value !== undefined) {
+      result[key] = value;
+    }
+  }
+
+  return result;
+}
+
+function hasContentEncoding(headers: Record<string, string | string[]>) {
+  const encoding = headers['content-encoding'];
+  return Array.isArray(encoding) ? encoding.length > 0 : typeof encoding === 'string' && encoding.trim().length > 0;
 }
 
 function isTextMime(contentType?: string): boolean {

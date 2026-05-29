@@ -3,13 +3,12 @@ import path from 'path';
 import { AppConfig, CacheRule, saveConfig, validateCacheRule } from './config';
 import { CacheStore } from './cacheStore';
 import { Logger } from './logger';
-import { MitmInstaller } from './mitmInstaller';
 
 function findRuleIndex(rules: CacheRule[], name: string): number {
   return rules.findIndex((rule) => rule.name === name);
 }
 
-export function registerAdminRoutes(app: any, config: AppConfig, cacheStore: CacheStore, logger: Logger, mitmInstaller?: MitmInstaller) {
+export function registerAdminRoutes(app: any, config: AppConfig, cacheStore: CacheStore, logger: Logger, mitmInstaller?: any) {
   app.get('/', (_req: Request, res: Response) => {
     res.sendFile(path.resolve(process.cwd(), 'public', 'admin', 'index.html'));
   });

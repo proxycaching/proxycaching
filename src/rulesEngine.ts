@@ -73,6 +73,7 @@ export function matchRule(request: {
   path: string;
   query: Record<string, string | string[]>;
   headers: Record<string, string | string[]>;
+  body?: string | undefined;
 }, rule: CacheRule): boolean {
   const match = rule.match;
 
@@ -94,6 +95,17 @@ export function matchRule(request: {
 
   if (!headerMatches(match.headers, request.headers)) {
     return false;
+  }
+
+  // If rule specifies a body pattern, match it against the request body
+  if ((match as any).body) {
+    const bodyPattern = String((match as any).body);
+    const reqBody = request.body ?? '';
+    if (bodyPattern !== '*') {
+      if (!matchPattern(bodyPattern, reqBody)) {
+        return false;
+      }
+    }
   }
 
   return true;

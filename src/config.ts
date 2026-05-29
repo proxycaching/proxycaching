@@ -7,6 +7,8 @@ export interface CacheRuleMatch {
   paths?: string[];
   headers?: Record<string, string>;
   query?: Record<string, string>;
+  // Optional body pattern to match request body. Supports '*' or wildcard patterns.
+  body?: string;
 }
 
 export interface CacheRule {
@@ -83,6 +85,11 @@ function validateRuleMatch(value: unknown): CacheRuleMatch {
     match.query = Object.fromEntries(
       Object.entries(value.query).map(([key, val]) => [key, String(val)])
     );
+  }
+
+  if ('body' in value) {
+    assert(typeof (value as any).body === 'string', 'Rule match.body must be a string.');
+    match.body = String((value as any).body);
   }
 
   return match;

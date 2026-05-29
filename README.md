@@ -108,35 +108,8 @@ The project now relies on the proxy runtime to create the CA files in `config/mi
 
 ### CA installation
 
-To trust HTTPS interception, the CA certificate created by the proxy must be installed into the system trust store.
-
-#### Windows
-
-Automatic installation is attempted when the proxy starts.
-
-If automatic install fails, use:
-
-```bash
-npm run mitm-install-windows
-```
-
-#### Export CA certificate
-
-To export the currently generated CA certificate:
-
-```bash
-npm run mitm-export
-```
-
-#### Verify or initialize CA
-
-To verify the CA files or ensure the proxy CA directory exists:
-
-```bash
-npm run mitm-init
-```
-
-> Note: `mitm-init` does not create a new CA certificate if one does not already exist. The proxy runtime is responsible for creating the CA.
+To trust HTTPS interception, the CA certificate created by the proxy must be installed.
+Certificates are stored in `config/mitm/proxy-ca/certs`
 
 ## Admin API
 

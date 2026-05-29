@@ -6,6 +6,7 @@ import { Logger } from './logger';
 import http from 'http';
 import https from 'https';
 import { URL } from 'url';
+import { buildCacheKey } from './proxyUtils';
 
 function normalizeHeaders(headers: http.IncomingHttpHeaders): Record<string, string | string[]> {
   const normalized: Record<string, string | string[]> = {};
@@ -102,15 +103,8 @@ function buildTargetUrl(req: Request): string {
   return resolveProxyTargetUrl(req.originalUrl || req.url, req.headers.host);
 }
 
-function buildCacheKey(targetUrl: string, req: Request, bodyString: string | undefined): string {
-  const identity = {
-    method: req.method,
-    url: targetUrl,
-    headers: normalizeHeaders(req.headers),
-    body: bodyString || '',
-  };
-  return JSON.stringify(identity);
-}
+// cache key creation uses a hashed canonical identity
+// moved to `proxyUtils.buildCacheKey`
 
 function buildRequestContext(req: Request, targetUrl: string) {
   const url = new URL(targetUrl);
@@ -157,8 +151,26 @@ function removeHopByHopHeaders(headers: Record<string, string | string[]>): Reco
   return result;
 }
 
+function hasContentEncoding(headers: Record<string, string | string[]>) {
+  const encoding = headers['content-encoding'];
+  return Array.isArray(encoding) ? encoding.length > 0 : typeof encoding === 'string' && encoding.trim().length > 0;
+}
+
 function sendCachedResponse(res: Response, entry: CacheEntry) {
+  const isStaleCompressedEntry = hasContentEncoding(entry.response.headers) && entry.response.bodyEncoding !== 'base64';
+  if (isStaleCompressedEntry) {
+    throw new Error('Stale compressed cache entry detected');
+  }
+
+  const responseBodyEncoding = entry.response.bodyEncoding === 'base64' || hasContentEncoding(entry.response.headers)
+    ? 'base64'
+    : 'utf8';
   const headers = removeHopByHopHeaders(entry.response.headers);
+  delete headers['content-length'];
+  if (responseBodyEncoding !== 'base64') {
+    delete headers['content-encoding'];
+  }
+
   res.status(entry.response.status);
   res.set(headers as Record<string, string | string[]>);
 
@@ -167,7 +179,7 @@ function sendCachedResponse(res: Response, entry: CacheEntry) {
     return;
   }
 
-  if (entry.response.bodyEncoding === 'base64') {
+  if (responseBodyEncoding === 'base64') {
     res.send(Buffer.from(entry.response.body, 'base64'));
   } else {
     res.send(entry.response.body);
@@ -259,10 +271,14 @@ export function createProxyHandler(config: AppConfig, cacheStore: CacheStore, lo
     try {
       const targetUrl = buildTargetUrl(req);
       const requestContext = buildRequestContext(req, targetUrl);
+          // include body in requestContext for rule matching
+          const bodyBuf = getRequestBodyBuffer(req);
+          const bodyStr = bodyBuf ? bodyBuf.toString('base64') : undefined;
+          (requestContext as any).body = bodyStr ? bodyStr : undefined;
       const cacheAllowed = shouldCache(requestContext, config.rules);
-      const bodyBuffer = getRequestBodyBuffer(req);
-      const bodyString = bodyBuffer ? bodyBuffer.toString('base64') : undefined;
-      const cacheKey = buildCacheKey(targetUrl, req, bodyString);
+          const bodyBuffer = getRequestBodyBuffer(req);
+          const bodyString = bodyBuffer ? bodyBuffer.toString('base64') : undefined;
+          const cacheKey = buildCacheKey(req.method, targetUrl, normalizeHeaders(req.headers), bodyString);
 
       logger.debug('Incoming request', {
         method: req.method,
@@ -273,9 +289,14 @@ export function createProxyHandler(config: AppConfig, cacheStore: CacheStore, lo
       if (cacheAllowed) {
         const cached = await cacheStore.get(cacheKey);
         if (cached) {
-          logger.info('Cache hit', { method: req.method, url: targetUrl, key: cacheKey });
-          sendCachedResponse(res, cached);
-          return;
+          const isStaleCompressedEntry = hasContentEncoding(cached.response.headers) && cached.response.bodyEncoding !== 'base64';
+          if (isStaleCompressedEntry) {
+            logger.warn('Skipping stale compressed cache entry', { method: req.method, url: targetUrl, key: cacheKey });
+          } else {
+            logger.info('Cache hit', { method: req.method, url: targetUrl, key: cacheKey });
+            sendCachedResponse(res, cached);
+            return;
+          }
         }
 
         logger.info('Cache miss', { method: req.method, url: targetUrl, key: cacheKey });

@@ -9,7 +9,6 @@ import { createProxyHandler, resolveProxyTargetUrl } from './proxyHandler';
 import { startMitmProxy } from './mitmProxy';
 import { CacheStore } from './cacheStore';
 import { createLogger } from './logger';
-import { MitmInstaller } from './mitmInstaller';
 
 function handleConnect(req: http.IncomingMessage, clientSocket: net.Socket, head: Buffer): void {
   const target = req.url || '';
@@ -148,12 +147,10 @@ async function main() {
   const cacheStore = new CacheStore(config.proxy.podcachePath, config.proxy.encryption, logger);
   await cacheStore.initialize();
 
-  let mitmInstaller: MitmInstaller | undefined;
-
   if (config.proxy.adminEnabled) {
     const adminApp = express();
     adminApp.use(express.json({ limit: '2mb' }));
-    registerAdminRoutes(adminApp, config, cacheStore, logger, mitmInstaller);
+    registerAdminRoutes(adminApp, config, cacheStore, logger);
     adminApp.listen(config.proxy.adminPort, () => {
       logger.info(`Admin server listening on http://localhost:${config.proxy.adminPort}`);
     });
@@ -163,8 +160,7 @@ async function main() {
 
   if (config.proxy.mitmEnabled) {
     // Start MITM proxy which will handle CONNECT and intercept TLS to allow caching of HTTPS
-    mitmInstaller = new MitmInstaller(CONFIG_DIR, logger);
-    startMitmProxy(config, cacheStore, logger, mitmInstaller);
+    startMitmProxy(config, cacheStore, logger);
   } else {
     const proxyServer = http.createServer(proxyApp);
     proxyServer.on('connect', handleConnect);

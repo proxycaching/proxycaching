@@ -1,4 +1,9 @@
-# Proxy Caching Server
+<div align="center">
+  <a href="https://github.com/proxycaching/proxycaching">
+      <img alt="ProxyCaching logo" src="https://github.com/user-attachments/assets/fa865705-58aa-4fcf-99ee-cd9928e4a4ea" height="128">
+  </a>
+  <h1>Proxy Caching</h1>
+</div>
 
 This project is a Node.js + TypeScript proxy cache server that is still under active development.
 

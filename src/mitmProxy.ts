@@ -3,7 +3,7 @@ import path from 'path';
 import { CacheStore } from './cacheStore';
 import { AppConfig, CONFIG_DIR } from './config';
 import { Logger } from './logger';
-import { shouldCache } from './rulesEngine';
+import { shouldCache, getMatchedRule } from './rulesEngine';
 import { URL } from 'url';
 import { normalizeHeaders as normalize } from './proxyUtils';
 import { IncomingMessage } from 'http';
@@ -61,9 +61,10 @@ export function startMitmProxy(config: AppConfig, cacheStore: CacheStore, logger
 
       const requestContext = { method, hostname: urlObj.hostname, path: urlObj.pathname, query, headers: requestHeaders, body: requestBodyStr || undefined };
       const cacheAllowed = shouldCache(requestContext, config.rules);
+      const matchedRule = getMatchedRule(requestContext, config.rules);
 
       if (cacheAllowed) {
-        const key = buildCacheKey(method, targetUrl, requestHeaders, requestBodyStr || undefined);
+        const key = buildCacheKey(method, targetUrl, requestHeaders, requestBodyStr || undefined, matchedRule?.groupBy);
         const cached = await cacheStore.get(key);
 
         if (cached) {
@@ -137,9 +138,10 @@ export function startMitmProxy(config: AppConfig, cacheStore: CacheStore, logger
 
         const requestContext = { method, hostname: urlObj.hostname, path: urlObj.pathname, query, headers: requestHeaders, body: requestBodyData.body || undefined };
         const cacheAllowed = shouldCache(requestContext, config.rules);
+        const matchedRule = getMatchedRule(requestContext, config.rules);
 
         if (cacheAllowed) {
-          const key = buildCacheKey(method, targetUrl, requestHeaders, requestBodyData.body || undefined);
+          const key = buildCacheKey(method, targetUrl, requestHeaders, requestBodyData.body || undefined, matchedRule?.groupBy);
           const entry = {
             id: '',
             request: {

@@ -51,11 +51,23 @@ function canonicalizeUrl(raw: string): string {
   }
 }
 
-export function buildCacheKey(method: string, url: string, headers: Record<string, string | string[]>, bodyString?: string): string {
+export function buildCacheKey(method: string, url: string, headers: Record<string, string | string[]>, bodyString?: string, groupBy?: 'full' | 'url-only'): string {
   const canonicalUrl = canonicalizeUrl(url);
   const filteredHeaders = removeHopByHop(headers);
   const canonicalHeaders = normalizeHeaders(filteredHeaders as any);
-  const payload = JSON.stringify({ method: method.toUpperCase(), url: canonicalUrl, headers: canonicalHeaders, body: bodyString || '' });
+  
+  // Use groupBy strategy if specified, otherwise default to 'full'
+  const strategy = groupBy || 'full';
+  
+  let payload: string;
+  if (strategy === 'url-only') {
+    // Group by URL only, ignoring body and headers
+    payload = JSON.stringify({ url: canonicalUrl });
+  } else {
+    // Default: include method, url, headers, and body
+    payload = JSON.stringify({ method: method.toUpperCase(), url: canonicalUrl, headers: canonicalHeaders, body: bodyString || '' });
+  }
+  
   const hash = crypto.createHash('sha256').update(payload).digest('hex');
   return `v2:${hash}`;
 }

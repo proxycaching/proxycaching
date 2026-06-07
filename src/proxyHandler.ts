@@ -1,7 +1,7 @@
 import { Request, Response, RequestHandler } from 'express';
 import { AppConfig } from './config';
 import { CacheStore, CacheEntry } from './cacheStore';
-import { shouldCache } from './rulesEngine';
+import { shouldCache, getMatchedRule } from './rulesEngine';
 import { Logger } from './logger';
 import http from 'http';
 import https from 'https';
@@ -276,9 +276,10 @@ export function createProxyHandler(config: AppConfig, cacheStore: CacheStore, lo
           const bodyStr = bodyBuf ? bodyBuf.toString('base64') : undefined;
           (requestContext as any).body = bodyStr ? bodyStr : undefined;
       const cacheAllowed = shouldCache(requestContext, config.rules);
+      const matchedRule = getMatchedRule(requestContext, config.rules);
           const bodyBuffer = getRequestBodyBuffer(req);
           const bodyString = bodyBuffer ? bodyBuffer.toString('base64') : undefined;
-          const cacheKey = buildCacheKey(req.method, targetUrl, normalizeHeaders(req.headers), bodyString);
+          const cacheKey = buildCacheKey(req.method, targetUrl, normalizeHeaders(req.headers), bodyString, matchedRule?.groupBy);
 
       logger.debug('Incoming request', {
         method: req.method,

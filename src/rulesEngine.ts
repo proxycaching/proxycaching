@@ -125,3 +125,18 @@ export function shouldCache(request: {
   }
   return false;
 }
+
+export function getMatchedRule(request: {
+  method: string;
+  hostname: string;
+  path: string;
+  query: Record<string, string | string[]>;
+  headers: Record<string, string | string[]>;
+}, rules: CacheRule[]): CacheRule | undefined {
+  for (const rule of rules) {
+    if (matchRule(request, rule)) {
+      return rule;
+    }
+  }
+  return undefined;
+}

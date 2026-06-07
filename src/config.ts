@@ -15,6 +15,9 @@ export interface CacheRule {
   name: string;
   match: CacheRuleMatch;
   cache: boolean;
+  // How to generate the cache key: 'full' (default) includes method, url, headers, body
+  // 'url-only' groups by URL ignoring body content (useful for APIs with same endpoint, different payloads)
+  groupBy?: 'full' | 'url-only';
 }
 
 export interface EncryptionConfig {

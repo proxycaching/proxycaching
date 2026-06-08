@@ -6,7 +6,7 @@ import { Logger } from './logger';
 import http from 'http';
 import https from 'https';
 import { URL } from 'url';
-import { buildCacheKey } from './proxyUtils';
+import { buildCacheKey, isSSEResponse } from './proxyUtils';
 
 function normalizeHeaders(headers: http.IncomingHttpHeaders): Record<string, string | string[]> {
   const normalized: Record<string, string | string[]> = {};
@@ -186,7 +186,39 @@ function sendCachedResponse(res: Response, entry: CacheEntry) {
   }
 }
 
-async function forwardRequest(targetUrl: string, req: Request): Promise<{ status: number; headers: Record<string, string | string[]>; body: Buffer }> {
+async function sendCachedSSEResponse(res: Response, entry: CacheEntry, sseConfig: { enabled: boolean; simulateTiming: boolean }): Promise<void> {
+  if (!entry.sseStream || !sseConfig.enabled) {
+    sendCachedResponse(res, entry);
+    return;
+  }
+
+  const headers = removeHopByHopHeaders(entry.response.headers);
+  delete headers['content-length'];
+
+  res.status(entry.response.status);
+  res.set(headers as Record<string, string | string[]>);
+
+  // Send SSE chunks with timing
+  if (sseConfig.simulateTiming) {
+    // Playback with original timing
+    let lastTimestamp = 0;
+    for (const chunk of entry.sseStream.chunks) {
+      const delayMs = chunk.timestamp - lastTimestamp;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      res.write(`data: ${chunk.data}\n\n`);
+      lastTimestamp = chunk.timestamp;
+    }
+  } else {
+    // Send all chunks immediately
+    for (const chunk of entry.sseStream.chunks) {
+      res.write(`data: ${chunk.data}\n\n`);
+    }
+  }
+
+  res.end();
+}
+
+async function forwardRequest(targetUrl: string, req: Request): Promise<{ status: number; headers: Record<string, string | string[]>; body: Buffer; sseChunks?: Array<{ data: string; timestamp: number }> }> {
   const url = new URL(targetUrl);
   const transport = url.protocol === 'https:' ? https : http;
   const headers = { ...req.headers } as Record<string, string | string[]>;
@@ -207,13 +239,30 @@ async function forwardRequest(targetUrl: string, req: Request): Promise<{ status
   return new Promise((resolve, reject) => {
     const proxyReq = transport.request(options, (proxyRes) => {
       const chunks: Buffer[] = [];
+      const sseChunks: Array<{ data: string; timestamp: number }> = [];
+      const startTime = Date.now();
+      const isSSE = isSSEResponse(proxyRes.headers);
 
-      proxyRes.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+      proxyRes.on('data', (chunk) => {
+        chunks.push(Buffer.from(chunk));
+        if (isSSE) {
+          const elapsed = Date.now() - startTime;
+          const data = chunk.toString('utf8');
+          if (data.startsWith('data: ')) {
+            sseChunks.push({
+              data: data.substring(6).trim(),
+              timestamp: elapsed,
+            });
+          }
+        }
+      });
+
       proxyRes.on('end', () => {
         resolve({
           status: proxyRes.statusCode || 500,
           headers: normalizeHeaders(proxyRes.headers),
           body: Buffer.concat(chunks),
+          sseChunks: isSSE ? sseChunks : undefined,
         });
       });
     });
@@ -228,13 +277,13 @@ async function forwardRequest(targetUrl: string, req: Request): Promise<{ status
   });
 }
 
-function buildCacheEntry(req: Request, targetUrl: string, upstream: { status: number; headers: Record<string, string | string[]>; body: Buffer }): CacheEntry {
+function buildCacheEntry(req: Request, targetUrl: string, upstream: { status: number; headers: Record<string, string | string[]>; body: Buffer; sseChunks?: Array<{ data: string; timestamp: number }> }): CacheEntry {
   const requestBody = getRequestBodyBuffer(req);
   const contentType = String(req.headers['content-type'] || '');
   const requestBodyData = getBodyString(requestBody, contentType);
   const responseBodyData = getBodyString(upstream.body, String(upstream.headers['content-type'] || ''));
 
-  return {
+  const entry: CacheEntry = {
     id: '',
     request: {
       method: req.method,
@@ -254,6 +303,16 @@ function buildCacheEntry(req: Request, targetUrl: string, upstream: { status: nu
     hitCount: 1,
     metadata: {},
   };
+
+  if (upstream.sseChunks && upstream.sseChunks.length > 0) {
+    const totalDuration = upstream.sseChunks.length > 0 ? upstream.sseChunks[upstream.sseChunks.length - 1].timestamp : 0;
+    entry.sseStream = {
+      chunks: upstream.sseChunks,
+      totalDuration,
+    };
+  }
+
+  return entry;
 }
 
 export function createProxyHandler(config: AppConfig, cacheStore: CacheStore, logger: Logger): RequestHandler {
@@ -295,7 +354,7 @@ export function createProxyHandler(config: AppConfig, cacheStore: CacheStore, lo
             logger.warn('Skipping stale compressed cache entry', { method: req.method, url: targetUrl, key: cacheKey });
           } else {
             logger.info('Cache hit', { method: req.method, url: targetUrl, key: cacheKey });
-            sendCachedResponse(res, cached);
+            await sendCachedSSEResponse(res, cached, config.proxy.sse);
             return;
           }
         }

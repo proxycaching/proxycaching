@@ -26,6 +26,11 @@ export interface EncryptionConfig {
   keyEnvVar: string;
 }
 
+export interface SSEConfig {
+  enabled: boolean; // Enable SSE stream caching and playback
+  simulateTiming: boolean; // Playback with original timing (default: true)
+}
+
 export interface ProxyConfig {
   port: number;
   adminPort: number;
@@ -33,6 +38,7 @@ export interface ProxyConfig {
   adminEnabled: boolean;
   mitmEnabled?: boolean;
   encryption: EncryptionConfig;
+  sse: SSEConfig;
   logging: {
     level: string;
   };
@@ -104,11 +110,18 @@ export function validateCacheRule(value: unknown): CacheRule {
   assert('match' in value, `Rule ${String((value as any).name)} requires a match object.`);
   assert(typeof value.cache === 'boolean', `Rule ${String((value as any).name)} requires a boolean cache property.`);
 
-  return {
+  const rule: CacheRule = {
     name: String((value as any).name),
     match: validateRuleMatch((value as any).match),
     cache: (value as any).cache,
   };
+
+  if ('groupBy' in value) {
+    assert(value.groupBy === 'full' || value.groupBy === 'url-only', `Rule ${rule.name} groupBy must be 'full' or 'url-only'.`);
+    rule.groupBy = value.groupBy;
+  }
+
+  return rule;
 }
 
 function validateRules(value: unknown): CacheRule[] {
@@ -120,11 +133,18 @@ function validateRules(value: unknown): CacheRule[] {
     assert('match' in item, `Rule ${item.name} requires a match object.`);
     assert(typeof item.cache === 'boolean', `Rule ${item.name} requires a boolean cache property.`);
 
-    return {
+    const rule: CacheRule = {
       name: item.name,
       match: validateRuleMatch(item.match),
       cache: item.cache,
     };
+
+    if ('groupBy' in item) {
+      assert(item.groupBy === 'full' || item.groupBy === 'url-only', `Rule ${item.name} groupBy must be 'full' or 'url-only'.`);
+      rule.groupBy = item.groupBy;
+    }
+
+    return rule;
   });
 }
 
@@ -138,6 +158,20 @@ function validateEncryptionConfig(value: unknown): EncryptionConfig {
     enabled: value.enabled,
     algorithm: value.algorithm,
     keyEnvVar: value.keyEnvVar,
+  };
+}
+
+function validateSSEConfig(value: unknown): SSEConfig {
+  if (!value) {
+    return { enabled: true, simulateTiming: true };
+  }
+  assert(isRecord(value), 'SSE config must be an object.');
+  assert(typeof value.enabled === 'boolean', 'SSE enabled flag must be boolean.');
+  assert(typeof value.simulateTiming === 'boolean', 'SSE simulateTiming flag must be boolean.');
+
+  return {
+    enabled: value.enabled,
+    simulateTiming: value.simulateTiming,
   };
 }
 
@@ -160,6 +194,7 @@ function validateProxyConfig(value: unknown): ProxyConfig {
     adminEnabled: value.adminEnabled,
     mitmEnabled: (value as any).mitmEnabled ?? false,
     encryption: validateEncryptionConfig(value.encryption),
+    sse: validateSSEConfig((value as any).sse),
     logging: {
       level: value.logging.level,
     },

@@ -5,7 +5,7 @@ import { AppConfig, CONFIG_DIR } from './config';
 import { Logger } from './logger';
 import { shouldCache, getMatchedRule } from './rulesEngine';
 import { URL } from 'url';
-import { normalizeHeaders as normalize } from './proxyUtils';
+import { normalizeHeaders as normalize, isSSEResponse } from './proxyUtils';
 import { IncomingMessage } from 'http';
 import { buildCacheKey } from './proxyUtils';
 
@@ -37,7 +37,14 @@ export function startMitmProxy(config: AppConfig, cacheStore: CacheStore, logger
   });
 
   const resChunks: Buffer[] = [];
+  const resChunkTimestamps: number[] = [];
+  let responseStartTime = 0;
+  
   ctx.onResponseData((ctx2: any, chunk: Buffer, cb: Function) => {
+    if (resChunks.length === 0) {
+      responseStartTime = Date.now();
+    }
+    resChunkTimestamps.push(Date.now() - responseStartTime);
     resChunks.push(chunk);
     cb(null, chunk);
   });
@@ -72,23 +79,51 @@ export function startMitmProxy(config: AppConfig, cacheStore: CacheStore, logger
           if (isStaleCompressedEntry) {
             logger.warn('Skipping stale compressed cache entry', { url: targetUrl, key });
           } else {
-            const responseBodyEncoding = cached.response.bodyEncoding === 'base64' || hasContentEncoding(cached.response.headers)
-              ? 'base64'
-              : 'utf8';
-            const responseBody = cached.response.body
-              ? responseBodyEncoding === 'base64'
-                ? Buffer.from(cached.response.body, 'base64')
-                : Buffer.from(cached.response.body, 'utf8')
-              : undefined;
+            // Check if cached response is SSE
+            if (cached.sseStream && config.proxy.sse.enabled) {
+              const hitHeaders = removeHopByHopHeaders(cached.response.headers);
+              delete hitHeaders['content-length'];
 
-            const hitHeaders = removeHopByHopHeaders(cached.response.headers);
-            delete hitHeaders['content-length'];
-            if (responseBodyEncoding !== 'base64') {
-              delete hitHeaders['content-encoding'];
+              ctx.proxyToClientResponse.writeHead(cached.response.status, hitHeaders);
+
+              if (config.proxy.sse.simulateTiming) {
+                // Playback with original timing
+                let lastTimestamp = 0;
+                for (const chunk of cached.sseStream.chunks) {
+                  const delayMs = chunk.timestamp - lastTimestamp;
+                  await new Promise((resolve) => setTimeout(resolve, delayMs));
+                  ctx.proxyToClientResponse.write(`data: ${chunk.data}\n\n`);
+                  lastTimestamp = chunk.timestamp;
+                }
+              } else {
+                // Send all chunks immediately
+                for (const chunk of cached.sseStream.chunks) {
+                  ctx.proxyToClientResponse.write(`data: ${chunk.data}\n\n`);
+                }
+              }
+
+              ctx.proxyToClientResponse.end();
+            } else {
+              // Regular non-SSE response
+              const responseBodyEncoding = cached.response.bodyEncoding === 'base64' || hasContentEncoding(cached.response.headers)
+                ? 'base64'
+                : 'utf8';
+              const responseBody = cached.response.body
+                ? responseBodyEncoding === 'base64'
+                  ? Buffer.from(cached.response.body, 'base64')
+                  : Buffer.from(cached.response.body, 'utf8')
+                : undefined;
+
+              const hitHeaders = removeHopByHopHeaders(cached.response.headers);
+              delete hitHeaders['content-length'];
+              if (responseBodyEncoding !== 'base64') {
+                delete hitHeaders['content-encoding'];
+              }
+
+              ctx.proxyToClientResponse.writeHead(cached.response.status, hitHeaders);
+              ctx.proxyToClientResponse.end(responseBody);
             }
 
-            ctx.proxyToClientResponse.writeHead(cached.response.status, hitHeaders);
-            ctx.proxyToClientResponse.end(responseBody);
             logger.info('MITM cache hit', { url: targetUrl });
 
             if (ctx.proxyToServerRequest) {
@@ -142,7 +177,24 @@ export function startMitmProxy(config: AppConfig, cacheStore: CacheStore, logger
 
         if (cacheAllowed) {
           const key = buildCacheKey(method, targetUrl, requestHeaders, requestBodyData.body || undefined, matchedRule?.groupBy);
-          const entry = {
+          
+          // Check if response is SSE and parse chunks
+          let sseChunks: Array<{ data: string; timestamp: number }> | undefined;
+          if (isSSEResponse(responseHeaders)) {
+            sseChunks = [];
+            for (let i = 0; i < resChunks.length; i++) {
+              const chunkData = resChunks[i].toString('utf8');
+              const timestamp = resChunkTimestamps[i] || 0;
+              if (chunkData.startsWith('data: ')) {
+                sseChunks.push({
+                  data: chunkData.substring(6).trim(),
+                  timestamp,
+                });
+              }
+            }
+          }
+
+          const entry: any = {
             id: '',
             request: {
               method, url: targetUrl, headers: requestHeaders,
@@ -159,7 +211,15 @@ export function startMitmProxy(config: AppConfig, cacheStore: CacheStore, logger
             lastAccessedAt: new Date().toISOString(),
             hitCount: 1,
             metadata: {},
-          } as any;
+          };
+
+          if (sseChunks && sseChunks.length > 0) {
+            const totalDuration = sseChunks.length > 0 ? sseChunks[sseChunks.length - 1].timestamp : 0;
+            entry.sseStream = {
+              chunks: sseChunks,
+              totalDuration,
+            };
+          }
 
           await cacheStore.set(key, entry);
           logger.info('MITM cached entry', { url: targetUrl });

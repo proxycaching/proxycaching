@@ -1,0 +1,14 @@
+{
+  "name": "sse-tester",
+  "version": "1.0.0",
+  "main": "client.js",
+  "scripts": {
+    "test": "node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "SSE (Server-Sent Events) streaming proxy test",
+  "dependencies": {
+    "undici": "^7.26.0"
+  }
+}

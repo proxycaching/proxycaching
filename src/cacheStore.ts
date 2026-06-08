@@ -24,6 +24,16 @@ export interface CacheEntry {
   lastAccessedAt: string;
   hitCount: number;
   metadata: Record<string, unknown>;
+  // SSE stream information (if response is Server-Sent Events)
+  sseStream?: {
+    // Array of chunks with timing information for playback
+    chunks: Array<{
+      data: string;
+      timestamp: number; // milliseconds elapsed since stream start
+    }>;
+    // Total duration of the original stream in milliseconds
+    totalDuration: number;
+  };
 }
 
 interface CacheManifestItem {

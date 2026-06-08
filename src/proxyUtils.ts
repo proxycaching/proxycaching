@@ -71,3 +71,49 @@ export function buildCacheKey(method: string, url: string, headers: Record<strin
   const hash = crypto.createHash('sha256').update(payload).digest('hex');
   return `v2:${hash}`;
 }
+
+export function isSSEResponse(headers: Record<string, string | string[]> | http.IncomingHttpHeaders): boolean {
+  const contentType = headers['content-type'];
+  if (!contentType) return false;
+  const typeStr = Array.isArray(contentType) ? contentType[0] : String(contentType);
+  return typeStr?.includes('text/event-stream') || false;
+}
+
+export interface SSEChunk {
+  data: string;
+  timestamp: number;
+}
+
+// Parse SSE stream data into chunks with timestamps
+// Splits by 'data:' lines and tracks timing
+export function parseSSEStream(data: string, startTime: number = 0): SSEChunk[] {
+  const chunks: SSEChunk[] = [];
+  const lines = data.split('\n');
+  let buffer = '';
+  let chunkStartTime = startTime;
+
+  for (const line of lines) {
+    if (line.startsWith('data: ')) {
+      buffer += line.substring(6) + '\n';
+    } else if (line.trim() === '') {
+      // Empty line marks end of event
+      if (buffer.length > 0) {
+        chunks.push({
+          data: buffer.trimEnd(),
+          timestamp: chunkStartTime,
+        });
+        chunkStartTime = startTime + chunks.length * 50; // Default chunk interval
+        buffer = '';
+      }
+    }
+  }
+
+  if (buffer.length > 0) {
+    chunks.push({
+      data: buffer.trimEnd(),
+      timestamp: chunkStartTime,
+    });
+  }
+
+  return chunks;
+}

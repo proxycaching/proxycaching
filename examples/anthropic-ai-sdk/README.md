@@ -7,7 +7,7 @@ This example demonstrates a proxy connection to a client from the anthropic pack
 When repeatedly testing AI-based software, instead of paying for token consumption with each test, using ProxyCaching ensures that tokens are only consumed the first time, resulting in significant savings. Each subsequent execution will return the exact same response as the previous one, making testing seamless and saving time and money.
 
 ### 3. Correct Configuration
-To ensure that ProxyCaching correctly caches traffic for Claude, a ready-made `config.json` file has been included in this example and should be placed on the server in `config/config.json`. The most important configuration steps are:
+To ensure that ProxyCaching correctly caches traffic for Claude, `config.json` should contains such rule:
 ```JSON
 "rules": [
     {
@@ -22,3 +22,6 @@ To ensure that ProxyCaching correctly caches traffic for Claude, a ready-made `c
     }
 ]
 ```
+
+> [!NOTE] 
+> Default proxy server config already contains this rule.

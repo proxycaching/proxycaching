@@ -3,7 +3,7 @@
     <img alt="proxycaching logo" src="https://github.com/user-attachments/assets/fa865705-58aa-4fcf-99ee-cd9928e4a4ea" height="128">
   </a>
 
-  <h1>proxycaching</h1>
+  <h1>ProxyCaching</h1>
 
   <p><strong>Stop waiting for the same API call. Again.</strong></p>
 

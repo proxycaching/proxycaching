@@ -52,7 +52,7 @@ const sendPrompt = async () => {
     // Send a prompt to the Anthropic API and stream the response, with all requests going through the MITM proxy
     // First request to fetch the response (if proxy has never cached it, it will return the response and request will be cached now)
     await sendPrompt();
-    await new Promise(resolve => setTimeout(resolve, 3000)); // Delay to skip some time
+    //await new Promise(resolve => setTimeout(resolve, 3000)); // Delay to skip some time
     // Second request to fetch the response. SDK should return the same response without making a new request to the API and token usage
-    await sendPrompt();
+    //await sendPrompt();
 })();

@@ -2,7 +2,7 @@
   "proxy": {
     "port": 8080,
     "adminPort": 8081,
-    "podcachePath": "./podcache",
+    "podcachePath": "C:\\Users\\TEST\\Documents\\proxycaching\\podcache",
     "adminEnabled": true,
     "mitmEnabled": true,
     "encryption": {
@@ -22,9 +22,15 @@
     {
       "name": "anthropic-api-url-grouping",
       "match": {
-        "method": ["POST"],
-        "domains": ["api.anthropic.com"],
-        "paths": ["/v1/messages"]
+        "method": [
+          "POST"
+        ],
+        "domains": [
+          "api.anthropic.com"
+        ],
+        "paths": [
+          "/v1/messages"
+        ]
       },
       "cache": true,
       "groupBy": "url-only"
@@ -32,9 +38,16 @@
     {
       "name": "default",
       "match": {
-        "method": ["GET", "POST"],
-        "domains": ["*"],
-        "paths": ["*"],
+        "method": [
+          "GET",
+          "POST"
+        ],
+        "domains": [
+          "*"
+        ],
+        "paths": [
+          "*"
+        ],
         "query": {}
       },
       "cache": true

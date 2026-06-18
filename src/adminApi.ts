@@ -1,6 +1,7 @@
-import { Request, Response } from 'express';
+import express, { Request, Response } from 'express';
 import path from 'path';
-import { AppConfig, CacheRule, saveConfig, validateCacheRule } from './config';
+import fs from 'fs/promises';
+import { AppConfig, CacheRule, saveConfig, validateCacheRule, CONFIG_DIR } from './config';
 import { CacheStore } from './cacheStore';
 import { Logger } from './logger';
 
@@ -8,7 +9,9 @@ function findRuleIndex(rules: CacheRule[], name: string): number {
   return rules.findIndex((rule) => rule.name === name);
 }
 
-export function registerAdminRoutes(app: any, config: AppConfig, cacheStore: CacheStore, logger: Logger, mitmInstaller?: any) {
+export function registerAdminRoutes(app: any, config: AppConfig, cacheStore: CacheStore, logger: Logger) {
+  app.use(express.static(path.resolve(process.cwd(), 'public', 'admin')));
+
   app.get('/', (_req: Request, res: Response) => {
     res.sendFile(path.resolve(process.cwd(), 'public', 'admin', 'index.html'));
   });
@@ -98,6 +101,21 @@ export function registerAdminRoutes(app: any, config: AppConfig, cacheStore: Cac
     res.json(entry);
   });
 
+  app.delete('/cache/:key', async (req: Request, res: Response) => {
+    try {
+      const key = req.params.key;
+      const success = await cacheStore.delete(key);
+      if (!success) {
+        res.status(404).json({ error: 'Cache entry not found' });
+        return;
+      }
+      res.json({ success: true, message: 'Cache entry deleted successfully' });
+    } catch (error) {
+      logger.error('Delete cache entry error', { error: String(error) });
+      res.status(500).json({ error: 'Delete cache entry failed', details: String(error) });
+    }
+  });
+
   app.get('/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
@@ -112,6 +130,7 @@ export function registerAdminRoutes(app: any, config: AppConfig, cacheStore: Cac
         proxyPort: config.proxy.port,
         adminPort: config.proxy.adminPort,
         adminEnabled: config.proxy.adminEnabled,
+        mitmEnabled: config.proxy.mitmEnabled,
         encryptionEnabled: config.proxy.encryption.enabled,
         rulesCount: config.rules.length,
         cacheStats: stats,
@@ -129,64 +148,25 @@ export function registerAdminRoutes(app: any, config: AppConfig, cacheStore: Cac
     }
   });
 
-  app.get('/ca-info', async (_req: Request, res: Response) => {
-    if (!config.proxy.mitmEnabled || !mitmInstaller) {
+  app.get('/mitm-ca', async (_req: Request, res: Response) => {
+    if (!config.proxy.mitmEnabled) {
       res.status(400).json({ error: 'MITM proxy not enabled' });
       return;
     }
 
     try {
-      const caInfo = await mitmInstaller.getCAInfo();
-      res.json({
-        enabled: config.proxy.mitmEnabled,
-        fingerprint: caInfo.fingerprint,
-        isTrusted: caInfo.isTrusted,
-        platform: process.platform,
-      });
+      const caCertPath = path.join(CONFIG_DIR, 'mitm', 'proxy-ca', 'certs', 'ca.pem');
+      const cert = await fs.readFile(caCertPath, 'utf-8');
+      res.set('Content-Type', 'application/x-pem-file');
+      res.set('Content-Disposition', 'attachment; filename="mitm-ca.pem"');
+      res.send(cert);
     } catch (error) {
-      logger.error('CA info error', { error: String(error) });
-      res.status(500).json({ error: 'Unable to retrieve CA info', details: String(error) });
+      logger.error('MITM CA download error', { error: String(error) });
+      res.status(500).json({ error: 'Unable to download MITM CA certificate', details: String(error) });
     }
   });
 
-  app.post('/ca-install', async (_req: Request, res: Response) => {
-    if (!config.proxy.mitmEnabled || !mitmInstaller) {
-      res.status(400).json({ error: 'MITM proxy not enabled' });
-      return;
-    }
 
-    try {
-      const message = await mitmInstaller.installCA();
-      const caInfo = await mitmInstaller.getCAInfo();
-      res.json({
-        success: true,
-        message,
-        isTrusted: caInfo.isTrusted,
-      });
-    } catch (error) {
-      logger.error('CA install error', { error: String(error) });
-      res.status(500).json({ error: 'CA installation failed', details: String(error) });
-    }
-  });
-
-  app.get('/ca-export', async (_req: Request, res: Response) => {
-    if (!config.proxy.mitmEnabled || !mitmInstaller) {
-      res.status(400).json({ error: 'MITM proxy not enabled' });
-      return;
-    }
-
-    try {
-      const caInfo = await mitmInstaller.getCAInfo();
-      res.download(caInfo.certPath, 'mitm-ca.crt', (err) => {
-        if (err) {
-          logger.error('CA export error', { error: String(err) });
-        }
-      });
-    } catch (error) {
-      logger.error('CA export error', { error: String(error) });
-      res.status(500).json({ error: 'CA export failed', details: String(error) });
-    }
-  });
 }
 
 

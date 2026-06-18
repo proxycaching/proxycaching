@@ -1,184 +1,1769 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Proxy Cache Admin</title>
+  <title>ProxyCaching Admin Panel</title>
+  <link rel="shortcut icon" href="proxycaching_logo.jpg" type="image/png">
+  <!-- Inter Font and FontAwesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
   <style>
-    body { font-family: Arial, sans-serif; margin: 24px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-    th, td { border: 1px solid #ccc; padding: 8px; }
-    th { background: #f7f7f7; }
-    pre { white-space: pre-wrap; word-wrap: break-word; background: #f4f4f4; padding: 12px; border: 1px solid #ddd; }
-    button { margin: 4px; padding: 6px 10px; cursor: pointer; }
-    button:hover { background: #e0e0e0; }
-    .ca-section { border: 1px solid #ddd; padding: 12px; margin-top: 12px; background: #fafafa; }
-    .ca-info { margin: 8px 0; }
-    .ca-trusted { color: green; font-weight: bold; }
-    .ca-untrusted { color: red; font-weight: bold; }
-    .ca-fingerprint { font-family: monospace; word-break: break-all; }
+    :root {
+      --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      
+      /* Dark Theme (Default) */
+      --bg-primary: #0b0f19;
+      --bg-secondary: #151d30;
+      --bg-tertiary: #1f2b48;
+      --border-color: #243457;
+      
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      
+      --accent: #3b82f6;
+      --accent-hover: #60a5fa;
+      --accent-light: rgba(59, 130, 246, 0.15);
+      
+      --success: #10b981;
+      --success-light: rgba(16, 185, 129, 0.15);
+      --danger: #ef4444;
+      --danger-light: rgba(239, 68, 68, 0.15);
+      --warning: #f59e0b;
+      --warning-light: rgba(245, 158, 11, 0.15);
+      
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+      --card-radius: 12px;
+      --button-radius: 6px;
+    }
+
+    [data-theme="light"] {
+      /* Light Theme */
+      --bg-primary: #f8fafc;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #f1f5f9;
+      --border-color: #e2e8f0;
+      
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-light: #eff6ff;
+      
+      --success: #059669;
+      --success-light: #ecfdf5;
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      --warning: #d97706;
+      --warning-light: #fffbeb;
+      
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding-bottom: 60px;
+      line-height: 1.5;
+    }
+
+    /* Scrollbar Styling (Sliders) */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+
+    /* Header (Uses theme variables - White in light theme, Slate in dark theme) */
+    header {
+      background-color: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .brand-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .app-logo {
+      height: 38px;
+      width: 38px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1px solid var(--border-color);
+    }
+
+    .brand-name {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text-primary); /* Responsive white/slate text */
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .theme-toggle-btn {
+      background: none;
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 8px 12px;
+      border-radius: var(--button-radius);
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .theme-toggle-btn:hover {
+      background-color: var(--bg-tertiary);
+    }
+
+    /* Main Container (Single-column layout for full width tables/sections) */
+    .dashboard-container {
+      max-width: 1500px;
+      margin: 24px auto;
+      padding: 0 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Stats Cards Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      width: 100%;
+    }
+
+    .stat-card {
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--card-radius);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .stat-icon {
+      font-size: 24px;
+      color: var(--accent);
+      background-color: var(--accent-light);
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stat-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+      font-size: 18px;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    /* MITM Card (Now full width) */
+    .mitm-card {
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--card-radius);
+      padding: 20px;
+      box-shadow: var(--shadow-md);
+      width: 100%;
+    }
+
+    .mitm-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 768px) {
+      .mitm-grid {
+        grid-template-columns: 1.5fr 2fr 1fr;
+        align-items: center;
+      }
+    }
+
+    .mitm-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .mitm-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 4px;
+      gap: 4px;
+    }
+
+    .badge-success {
+      background-color: var(--success-light);
+      color: var(--success);
+    }
+
+    .badge-danger {
+      background-color: var(--danger-light);
+      color: var(--danger);
+    }
+
+    .mitm-info-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .mitm-info-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .mitm-info-value {
+      font-family: monospace;
+      font-size: 13px;
+      background-color: var(--bg-primary);
+      padding: 6px 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      word-break: break-all;
+    }
+
+    .accordion-trigger {
+      background: none;
+      border: none;
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 8px;
+    }
+
+    .accordion-content {
+      display: none;
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      background-color: var(--bg-primary);
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      grid-column: 1 / -1;
+    }
+
+    .accordion-content code {
+      display: block;
+      margin-top: 6px;
+      padding: 4px 8px;
+      background-color: var(--bg-tertiary);
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--text-primary);
+    }
+
+    /* Main Table Panel (Now full width) */
+    .main-panel {
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--card-radius);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .tabs-header {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+      background-color: rgba(0,0,0,0.05);
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-secondary);
+      padding: 16px 24px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-primary);
+      background-color: var(--bg-tertiary);
+    }
+
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      background-color: var(--bg-secondary);
+    }
+
+    .tab-content {
+      padding: 24px;
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Action bar */
+    .actions-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .search-input-wrapper {
+      position: relative;
+      flex-grow: 1;
+    }
+
+    .search-input-wrapper i {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+
+    .search-input {
+      width: 100%;
+      background-color: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--button-radius);
+      padding: 10px 12px 10px 36px;
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+
+    .search-input:focus {
+      outline: 2px solid var(--accent);
+      border-color: transparent;
+    }
+
+    .btn {
+      padding: 10px 16px;
+      border-radius: var(--button-radius);
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-tertiary);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .btn:hover {
+      background-color: var(--border-color);
+    }
+
+    .btn-primary {
+      background-color: var(--accent);
+      color: #ffffff;
+      border-color: transparent;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .btn-danger {
+      background-color: var(--danger);
+      color: #ffffff;
+      border-color: transparent;
+    }
+
+    .btn-danger:hover {
+      background-color: #dc2626;
+    }
+
+    /* Tables */
+    .table-container {
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background-color: var(--bg-primary);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      background-color: var(--bg-tertiary);
+      font-weight: 600;
+      color: var(--text-primary);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr:hover {
+      background-color: var(--bg-tertiary);
+    }
+
+    .method-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 4px;
+      text-align: center;
+      min-width: 48px;
+    }
+
+    .method-get { background-color: var(--accent-light); color: var(--accent); }
+    .method-post { background-color: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
+    .method-put { background-color: var(--warning-light); color: var(--warning); }
+    .method-delete { background-color: var(--danger-light); color: var(--danger); }
+
+    .url-cell {
+      max-width: 450px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-family: monospace;
+    }
+
+    .key-cell {
+      max-width: 200px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-family: monospace;
+      color: var(--text-secondary);
+    }
+
+    /* Modals & Popups (Scroll Fixes) */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .modal-card {
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--card-radius);
+      width: 100%;
+      max-width: 800px;
+      max-height: 90vh; /* Set proper height limit */
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-lg);
+      overflow: hidden; /* Prevent child content from leaking outside */
+      animation: modalSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes modalSlideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0; /* Keep header fixed */
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 18px;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .modal-close:hover {
+      color: var(--text-primary);
+    }
+
+    /* Flex-form to constrain form inside modal and make body scrollable */
+    .modal-card form {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex-grow: 1;
+      height: 100%;
+    }
+
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto; /* Allow scrolling here */
+      flex-grow: 1;
+    }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      flex-shrink: 0; /* Keep footer fixed */
+    }
+
+    /* Cache Details in Modal */
+    .details-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+      background-color: var(--bg-primary);
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+      font-size: 13px;
+    }
+
+    .meta-label {
+      color: var(--text-secondary);
+      margin-bottom: 2px;
+    }
+
+    .meta-val {
+      font-weight: 500;
+    }
+
+    .details-section-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 16px 0 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .details-pre-box {
+      background-color: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 12px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      max-height: 250px;
+    }
+
+    .headers-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background-color: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 10px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .header-row {
+      display: flex;
+      font-size: 12px;
+      font-family: monospace;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+      padding: 3px 0;
+    }
+
+    .header-key {
+      font-weight: 600;
+      color: var(--accent);
+      width: 150px;
+      flex-shrink: 0;
+    }
+
+    .header-value {
+      word-break: break-all;
+    }
+
+    /* Form Styles */
+    .form-group {
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text-primary);
+    }
+
+    .form-group input[type="text"],
+    .form-group select,
+    .form-group textarea {
+      background-color: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 10px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: var(--font-family);
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .form-group input[type="text"]:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: 2px solid var(--accent);
+      border-color: transparent;
+    }
+
+    /* Sliding Switch Toggle Styling */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 24px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      transition: .3s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: var(--text-secondary);
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(24px);
+      background-color: #ffffff;
+    }
+
+    /* Rules Cards */
+    .rule-card {
+      background-color: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .rule-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .rule-title {
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .rule-meta-tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+
+    .rule-match-details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      font-size: 13px;
+      background-color: var(--bg-secondary);
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+
+    .rule-match-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .rule-match-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+
+    .rule-match-val {
+      font-family: monospace;
+      word-break: break-all;
+    }
+
+    /* Action Notification Toast */
+    #ca-message {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1100;
+      border-radius: 6px;
+      box-shadow: var(--shadow-lg);
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      display: none;
+      animation: modalSlideUp 0.3s;
+    }
   </style>
 </head>
 <body>
-  <h1>Proxy Cache Admin</h1>
 
-  <section class="ca-section" id="ca-section" style="display:none;">
-    <h2>🔐 MITM HTTPS Caching</h2>
-    <div class="ca-info">
-      <strong>CA Fingerprint (SHA-256):</strong>
-      <div class="ca-fingerprint" id="ca-fingerprint">Loading...</div>
+  <!-- Header (Uses CSS variables to reflect theme correctly) -->
+  <header>
+    <div class="brand-container">
+      <img src="proxycaching_logo.jpg" alt="ProxyCaching Logo" class="app-logo" onerror="this.style.display='none'">
+      <span class="brand-name">ProxyCaching</span>
     </div>
-    <div class="ca-info">
-      <strong>Trust Status:</strong>
-      <span id="ca-status">Loading...</span>
+    <div class="header-actions">
+      <button class="theme-toggle-btn" onclick="toggleTheme()">
+        <i class="fa-solid fa-moon" id="theme-icon"></i>
+        <span id="theme-text">Dark</span>
+      </button>
     </div>
-    <div class="ca-info">
-      <p><em>To install the CA certificate, run from an admin command prompt:</em></p>
-      <code style="background: #f0f0f0; padding: 4px 8px; border-radius: 3px; display: block; margin: 8px 0;">npm run mitm-install</code>
-      <button onclick="exportCA()" style="background: #4CAF50; color: white;">Download CA Certificate</button>
+  </header>
+
+  <!-- Main Grid Layout (Single Column) -->
+  <div class="dashboard-container">
+
+    <!-- Stats Row -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon"><i class="fa-solid fa-heartbeat"></i></div>
+        <div class="stat-info">
+          <span class="stat-label">Server Status</span>
+          <span class="stat-value" id="server-status-val">Loading...</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i class="fa-solid fa-clock"></i></div>
+        <div class="stat-info">
+          <span class="stat-label">Uptime</span>
+          <span class="stat-value" id="uptime-val">Loading...</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i class="fa-solid fa-database"></i></div>
+        <div class="stat-info">
+          <span class="stat-label">Cache Entries</span>
+          <span class="stat-value" id="cache-count-val">Loading...</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i class="fa-solid fa-weight-hanging"></i></div>
+        <div class="stat-info">
+          <span class="stat-label">Cache Size</span>
+          <span class="stat-value" id="cache-size-val">Loading...</span>
+        </div>
+      </div>
+      <div class="stat-card" id="mitm-card" style="display:none">
+        <div class="stat-icon"><i class="fa-solid fa-lock" style="color: var(--accent);"></i></div>
+        <div class="stat-info">
+          <span class="stat-label">MITM CA Certificate</span>
+          <button onclick="downloadMitmCA()" class="btn btn-primary" style="margin-top: 8px; width: 100%; padding: 6px 8px; font-size: 0.85em;">
+            <i class="fa-solid fa-download"></i> Download
+          </button>
+        </div>
+      </div>
     </div>
-    <div id="ca-message" style="margin-top: 12px; display: none; padding: 8px; background: #e8f5e9; border-left: 4px solid green;"></div>
-  </section>
 
-  <section>
-    <h2>Cache Entries</h2>
-    <table id="cache-table">
-      <thead>
-        <tr>
-          <th>Key</th>
-          <th>URL</th>
-          <th>Method</th>
-          <th>Hits</th>
-          <th>Last Access</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </section>
 
-  <section>
-    <h2>Health & Diagnostics</h2>
-    <pre id="status">Loading status...</pre>
-  </section>
 
-  <section>
-    <h2>Details</h2>
-    <pre id="details">Select an entry to view details.</pre>
-  </section>
+    <!-- Main Panel containing Cache and Rules Tabs (Occupies full width) -->
+    <main class="main-panel">
+      <div class="tabs-header">
+        <button class="tab-btn active" onclick="switchTab('cache-tab', this)">
+          <i class="fa-solid fa-server"></i> Cache Store
+        </button>
+        <button class="tab-btn" onclick="switchTab('rules-tab', this)">
+          <i class="fa-solid fa-filter"></i> Cache Rules
+        </button>
+      </div>
 
+      <!-- CACHE TAB CONTENT -->
+      <div id="cache-tab" class="tab-content active">
+        <div class="actions-bar">
+          <div class="search-input-wrapper">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" class="search-input" id="cache-search" placeholder="Search key or URL..." oninput="filterCache()">
+          </div>
+          <button class="btn" onclick="loadCache()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+        </div>
+
+        <div class="table-container">
+          <table id="cache-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Key</th>
+                <th>URL</th>
+                <th>Hits</th>
+                <th>Last Access</th>
+                <th style="width: 150px; text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                  <i class="fa-solid fa-circle-notch fa-spin"></i> Loading cache entries...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RULES TAB CONTENT -->
+      <div id="rules-tab" class="tab-content">
+        <div class="actions-bar" style="justify-content: space-between; align-items: center;">
+          <h3 style="font-size: 15px; font-weight: 600;">Request Matching Cache Rules</h3>
+          <button class="btn btn-primary" onclick="openAddRuleModal()">
+            <i class="fa-solid fa-plus"></i> Add Rule
+          </button>
+        </div>
+
+        <div id="rules-container">
+          <div style="text-align: center; color: var(--text-muted); padding: 30px;">
+            <i class="fa-solid fa-circle-notch fa-spin"></i> Loading rules...
+          </div>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- CACHE DETAIL POPUP -->
+  <div class="modal-overlay" id="details-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-title"><i class="fa-solid fa-circle-info"></i> Cache Entry Details</span>
+        <button class="modal-close" onclick="closeModal('details-modal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="details-modal-body">
+        <!-- Generated Dynamically -->
+      </div>
+      <div class="modal-footer" id="details-modal-footer">
+        <!-- Actions -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD / EDIT RULE POPUP -->
+  <div class="modal-overlay" id="rule-modal">
+    <div class="modal-card" style="max-width: 600px;">
+      <div class="modal-header">
+        <span class="modal-title" id="rule-modal-title"><i class="fa-solid fa-plus-circle"></i> New Cache Rule</span>
+        <button class="modal-close" onclick="closeModal('rule-modal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="rule-form" onsubmit="saveRule(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="rule-name">Rule Name *</label>
+            <input type="text" id="rule-name" required placeholder="e.g., custom-api-rule">
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: center; margin-bottom: 16px;">
+            <div class="form-group">
+              <label for="rule-cache" style="margin-bottom: 8px;">Enable Caching</label>
+              <label class="switch">
+                <input type="checkbox" id="rule-cache" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label for="rule-groupby">Key Grouping (groupBy)</label>
+              <select id="rule-groupby">
+                <option value="full">Full (Method, URL, headers, body)</option>
+                <option value="url-only">URL Only (ignores request body)</option>
+              </select>
+            </div>
+          </div>
+
+          <hr style="border: none; border-top: 1px solid var(--border-color); margin: 16px 0;">
+          <h4 style="font-size: 13px; font-weight: 600; margin-bottom: 12px;"><i class="fa-solid fa-magnifying-glass"></i> Matching Conditions</h4>
+
+          <div class="form-group">
+            <label for="rule-methods">HTTP Methods *</label>
+            <select id="rule-methods" required>
+              <option value="" disabled selected>Select method(s)...</option>
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="GET,POST">GET & POST</option>
+              <option value="PUT">PUT</option>
+              <option value="DELETE">DELETE</option>
+              <option value="GET,POST,PUT,DELETE">ALL Methods</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="rule-domains">Domains (comma-separated, e.g., api.example.com)</label>
+            <input type="text" id="rule-domains" placeholder="e.g., api.example.com, *">
+          </div>
+
+          <div class="form-group">
+            <label for="rule-paths">Paths (comma-separated, e.g., /v1/*)</label>
+            <input type="text" id="rule-paths" placeholder="e.g., /v1/*, *">
+          </div>
+
+          <div class="form-group">
+            <label for="rule-headers">Required Headers (line by line, Key: Value)</label>
+            <textarea id="rule-headers" placeholder="e.g.,&#10;Content-Type: application/json&#10;Authorization: Bearer *"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="rule-query">Query Parameters (line by line, Key: Value)</label>
+            <textarea id="rule-query" placeholder="e.g.,&#10;format: json&#10;api_version: *"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="rule-body">Request Body Pattern (wildcard match)</label>
+            <input type="text" id="rule-body" placeholder="e.g., *search_term* or leave blank">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" onclick="closeModal('rule-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="rule-submit-btn">Save Rule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- CONFIRM ACTION POPUP (Custom confirm dialog) -->
+  <div class="modal-overlay" id="confirm-modal">
+    <div class="modal-card" style="max-width: 420px;">
+      <div class="modal-header">
+        <span class="modal-title" id="confirm-title"><i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i> Confirm Action</span>
+        <button class="modal-close" onclick="closeModal('confirm-modal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="confirm-message" style="padding: 24px; font-size: 14px; text-align: center; color: var(--text-primary);">
+        Are you sure you want to proceed?
+      </div>
+      <div class="modal-footer" style="justify-content: center; gap: 16px;">
+        <button class="btn" onclick="closeModal('confirm-modal')">Cancel</button>
+        <button class="btn btn-danger" id="confirm-yes-btn"><i class="fa-solid fa-trash-can"></i> Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="ca-message"></div>
+
+  <!-- JavaScript logic -->
   <script>
-    async function loadCAInfo() {
-      try {
-        const response = await fetch('/ca-info');
-        if (!response.ok) return;
+    let cacheData = [];
+    let rulesData = [];
+    let editingRuleName = null; // Stores name of rule if editing, or null if adding
+    let confirmCallback = null; // Callback for confirmation modal
 
-        const caInfo = await response.json();
-        document.getElementById('ca-section').style.display = 'block';
-        document.getElementById('ca-fingerprint').textContent = caInfo.fingerprint;
-        document.getElementById('ca-status').innerHTML = caInfo.isTrusted
-          ? '<span class="ca-trusted">✓ Trusted</span>'
-          : '<span class="ca-untrusted">✗ Not Trusted</span>';
-      } catch (error) {
-        // CA not available, hide section
+    // Uptime local ticker state
+    let baseUptimeSeconds = 0;  // Last known uptime value from API
+    let lastSyncTimestamp = 0;  // Date.now() when we last synced with API
+
+    // Theme Management
+    function initTheme() {
+      const savedTheme = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      updateThemeUI(savedTheme);
+    }
+
+    function toggleTheme() {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      updateThemeUI(newTheme);
+    }
+
+    function updateThemeUI(theme) {
+      const icon = document.getElementById('theme-icon');
+      const text = document.getElementById('theme-text');
+      if (theme === 'dark') {
+        icon.className = 'fa-solid fa-sun';
+        text.textContent = 'Light';
+      } else {
+        icon.className = 'fa-solid fa-moon';
+        text.textContent = 'Dark';
       }
     }
 
-    async function installCA() {
-      try {
-        const response = await fetch('/ca-install', { method: 'POST' });
-        if (!response.ok) {
-          const error = await response.json();
-          showCAMessage('Error: ' + error.details, false);
-          return;
-        }
+    // Custom Confirmation Modal
+    function showConfirmModal(message, callback) {
+      document.getElementById('confirm-message').textContent = message;
+      confirmCallback = callback;
+      openModal('confirm-modal');
+    }
 
-        const result = await response.json();
-        showCAMessage(result.message, true);
-        setTimeout(() => loadCAInfo(), 1000);
-      } catch (error) {
-        showCAMessage('Installation failed: ' + error.message, false);
+    document.getElementById('confirm-yes-btn').addEventListener('click', () => {
+      if (confirmCallback) {
+        confirmCallback();
+      }
+      closeModal('confirm-modal');
+    });
+
+    // Tabs logic
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+
+      if (tabId === 'rules-tab') {
+        loadRules();
+      } else {
+        loadCache();
       }
     }
 
-    async function exportCA() {
-      try {
-        const response = await fetch('/ca-export');
-        if (!response.ok) {
-          throw new Error('Export failed');
-        }
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'mitm-ca.crt';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } catch (error) {
-        showCAMessage('Export failed: ' + error.message, false);
-      }
+    // MITM Help toggle
+    function toggleMitmHelp() {
+      const content = document.getElementById('mitm-help-content');
+      content.style.display = content.style.display === 'block' ? 'none' : 'block';
     }
 
-    function showCAMessage(message, success) {
+    // Action Toast Notifications
+    function showNotification(message, success = true) {
       const elem = document.getElementById('ca-message');
       elem.textContent = message;
       elem.style.display = 'block';
-      elem.style.background = success ? '#e8f5e9' : '#ffebee';
-      elem.style.borderLeftColor = success ? 'green' : 'red';
+      elem.style.backgroundColor = success ? 'var(--success)' : 'var(--danger)';
+      elem.style.color = '#ffffff';
+      
       setTimeout(() => {
         elem.style.display = 'none';
       }, 5000);
     }
 
+    // --- API CLIENT CALLS ---
+
+
+    function formatUptime(seconds) {
+      const d = Math.floor(seconds / (3600*24));
+      const h = Math.floor((seconds % (3600*24)) / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = Math.floor(seconds % 60);
+      const parts = [];
+      if (d > 0) parts.push(`${d}d`);
+      if (h > 0) parts.push(`${h}h`);
+      if (m > 0) parts.push(`${m}m`);
+      parts.push(`${s}s`);
+      return parts.join(' ');
+    }
+
+    // Helper to format payload size
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // Tick uptime display every second using locally stored base value
+    function tickUptime() {
+      if (lastSyncTimestamp === 0) return; // Not yet synced with server
+      const elapsed = Math.floor((Date.now() - lastSyncTimestamp) / 1000);
+      document.getElementById('uptime-val').textContent = formatUptime(baseUptimeSeconds + elapsed);
+    }
+
+    // Load server status & health diagnostics (stats only, uptime synced locally)
     async function loadStatus() {
       try {
         const response = await fetch('/status');
         const data = await response.json();
-        document.getElementById('status').textContent = JSON.stringify(data, null, 2);
+        
+        // Sync local uptime base with server value
+        baseUptimeSeconds = Math.floor(data.uptimeSeconds);
+        lastSyncTimestamp = Date.now();
+
+        document.getElementById('server-status-val').innerHTML = '<span style="color: var(--success); font-weight:600;"><i class="fa-solid fa-circle-play"></i> Active</span>';
+        
+        if (data.cacheStats) {
+          document.getElementById('cache-count-val').textContent = data.cacheStats.totalEntries;
+          document.getElementById('cache-size-val').textContent = formatBytes(data.cacheStats.cacheSizeBytes);
+        }
+
+        // Show MITM section if enabled
+        if (data.mitmEnabled) {
+          document.getElementById('mitm-card').style.display = 'flex';
+        } else {
+          document.getElementById('mitm-card').style.display = 'none';
+        }
       } catch (error) {
-        document.getElementById('status').textContent = 'Unable to load status.';
+        document.getElementById('server-status-val').innerHTML = '<span style="color: var(--danger); font-weight:600;"><i class="fa-solid fa-circle-stop"></i> Unavailable</span>';
+        document.getElementById('uptime-val').textContent = '—';
+        document.getElementById('cache-count-val').textContent = '—';
+        document.getElementById('cache-size-val').textContent = '—';
+        document.getElementById('mitm-card').style.display = 'none';
       }
     }
 
+    // Download MITM CA Certificate
+    async function downloadMitmCA() {
+      try {
+        const response = await fetch('/mitm-ca');
+        if (!response.ok) throw new Error('Download failed');
+        
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'mitm-ca.pem';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showNotification('CA Certificate downloaded successfully!', true);
+      } catch (error) {
+        showNotification('Certificate download failed: ' + error.message, false);
+      }
+    }
+
+    // Load cache entries
     async function loadCache() {
-      const response = await fetch('/cache');
-      const data = await response.json();
+      try {
+        const response = await fetch('/cache');
+        cacheData = await response.json();
+        filterCache();
+      } catch (error) {
+        const tbody = document.querySelector('#cache-table tbody');
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; color: var(--danger); padding: 30px;">
+              <i class="fa-solid fa-triangle-exclamation"></i> Failed to load cache entries.
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    // Filter cache list by key or URL
+    function filterCache() {
+      const filterText = document.getElementById('cache-search').value.toLowerCase();
       const tbody = document.querySelector('#cache-table tbody');
       tbody.innerHTML = '';
 
-      data.forEach((item) => {
+      const filtered = cacheData.filter(item => {
+        const keyMatch = item.key.toLowerCase().includes(filterText);
+        const urlMatch = item.item.requestUrl.toLowerCase().includes(filterText);
+        return keyMatch || urlMatch;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
+              No matching entries found
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      filtered.forEach(item => {
         const row = document.createElement('tr');
-        row.innerHTML =
-          '<td>' + item.key + '</td>' +
-          '<td>' + item.item.requestUrl + '</td>' +
-          '<td>' + item.item.requestMethod + '</td>' +
-          '<td>' + item.item.hitCount + '</td>' +
-          '<td>' + item.item.lastAccessedAt + '</td>' +
-          '<td><button data-key="' + item.key + '">View</button></td>';
+        const method = item.item.requestMethod || 'GET';
+        const methodClass = `method-badge method-${method.toLowerCase()}`;
+        
+        const keyClean = escapeHtml(item.key);
+        const urlClean = escapeHtml(item.item.requestUrl);
+        const dateStr = item.item.lastAccessedAt ? new Date(item.item.lastAccessedAt).toLocaleString() : 'Never';
 
-        const button = row.querySelector('button');
-        if (button) {
-          button.addEventListener('click', () => loadDetails(item.key));
-        }
-
+        row.innerHTML = `
+          <td><span class="${methodClass}">${method}</span></td>
+          <td class="key-cell" title="${keyClean}">${keyClean}</td>
+          <td class="url-cell" title="${urlClean}">${urlClean}</td>
+          <td style="font-weight:600;">${item.item.hitCount || 0}</td>
+          <td style="color: var(--text-secondary); font-size:13px;">${dateStr}</td>
+          <td style="text-align: center; display: flex; gap: 6px; justify-content: center;">
+            <button class="btn" style="padding: 5px 8px; font-size:12px;" onclick="loadDetails('${encodeURIComponent(item.key)}')">
+              <i class="fa-solid fa-eye"></i> View
+            </button>
+            <button class="btn btn-danger" style="padding: 5px 8px; font-size:12px;" onclick="deleteCacheEntry('${encodeURIComponent(item.key)}')">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </td>
+        `;
         tbody.appendChild(row);
       });
     }
 
-    async function loadDetails(key) {
-      const response = await fetch('/cache/' + encodeURIComponent(key));
-      if (!response.ok) {
-        document.getElementById('details').textContent = 'Unable to load entry details.';
-        return;
-      }
-      const item = await response.json();
-      document.getElementById('details').textContent = JSON.stringify(item, null, 2);
+    // Delete cache entry
+    async function deleteCacheEntry(key) {
+      showConfirmModal('Are you sure you want to delete this cache entry?', async () => {
+        try {
+          const response = await fetch('/cache/' + key, { method: 'DELETE' });
+          if (!response.ok) throw new Error('Deletion failed.');
+          
+          showNotification('Cache entry deleted.');
+          
+          // Hide details modal if it was open for the deleted key
+          const modal = document.getElementById('details-modal');
+          if (modal.style.display === 'flex') {
+            closeModal('details-modal');
+          }
+
+          loadCache();
+          loadStatus();
+        } catch (error) {
+          showNotification('Error deleting entry: ' + error.message, false);
+        }
+      });
     }
 
-    loadCAInfo();
-    loadStatus();
+    // View selected cache details
+    async function loadDetails(key) {
+      try {
+        const response = await fetch('/cache/' + key);
+        if (!response.ok) throw new Error('Could not load details.');
+        const entry = await response.json();
+        
+        const bodyText = document.getElementById('details-modal-body');
+        const footerText = document.getElementById('details-modal-footer');
+        
+        const keyDecoded = decodeURIComponent(key);
+
+        const reqHeadersHtml = renderHeaders(entry.request?.headers);
+        const resHeadersHtml = renderHeaders(entry.response?.headers);
+        
+        const reqBodyHtml = renderBody(entry.request?.body, entry.request?.bodyEncoding);
+        const resBodyHtml = renderBody(entry.response?.body, entry.response?.bodyEncoding);
+
+        const statusClass = entry.response?.status >= 200 && entry.response?.status < 300 ? 'badge-success' : 'badge-danger';
+        const method = entry.request?.method || 'GET';
+        const methodClass = `method-badge method-${method.toLowerCase()}`;
+
+        bodyText.innerHTML = `
+          <div class="details-meta-grid">
+            <div class="meta-item">
+              <span class="meta-label">Cache Key</span>
+              <span class="meta-val" style="word-break: break-all; font-family: monospace;">${escapeHtml(keyDecoded)}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Method / Status Code</span>
+              <span class="meta-val">
+                <span class="${methodClass}">${method}</span>
+                <span class="mitm-badge ${statusClass}">${entry.response?.status || '—'}</span>
+              </span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Created At</span>
+              <span class="meta-val">${entry.createdAt ? new Date(entry.createdAt).toLocaleString() : '—'}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Hit Count</span>
+              <span class="meta-val">${entry.hitCount || 0}</span>
+            </div>
+          </div>
+
+          <div class="details-section-title"><i class="fa-solid fa-arrow-right-to-bracket"></i> HTTP REQUEST</div>
+          <div style="font-size:13px; font-weight:600; margin-bottom:4px; font-family: monospace; color: var(--accent);">${escapeHtml(entry.request?.url || '')}</div>
+          
+          <div style="margin-top: 8px;">
+            <span class="meta-label" style="font-size:11px; text-transform:uppercase;">Request Headers:</span>
+            ${reqHeadersHtml}
+          </div>
+          
+          <div style="margin-top: 8px;">
+            <span class="meta-label" style="font-size:11px; text-transform:uppercase;">Request Body:</span>
+            ${reqBodyHtml}
+          </div>
+
+          <hr style="border: none; border-top: 1px solid var(--border-color); margin: 20px 0;">
+
+          <div class="details-section-title"><i class="fa-solid fa-arrow-right-from-bracket"></i> HTTP RESPONSE</div>
+          
+          <div>
+            <span class="meta-label" style="font-size:11px; text-transform:uppercase;">Response Headers:</span>
+            ${resHeadersHtml}
+          </div>
+          
+          <div style="margin-top: 8px;">
+            <span class="meta-label" style="font-size:11px; text-transform:uppercase;">Response Body:</span>
+            ${resBodyHtml}
+          </div>
+        `;
+
+        footerText.innerHTML = `
+          <button class="btn btn-danger" onclick="deleteCacheEntry('${key}')"><i class="fa-solid fa-trash-can"></i> Delete Cache</button>
+          <button class="btn" onclick="closeModal('details-modal')">Close</button>
+        `;
+
+        openModal('details-modal');
+      } catch (error) {
+        showNotification('Details error: ' + error.message, false);
+      }
+    }
+
+    function renderHeaders(headers) {
+      if (!headers || Object.keys(headers).length === 0) {
+        return '<div style="font-style:italic; font-size:12px; color: var(--text-muted);">No headers</div>';
+      }
+      let html = '<div class="headers-grid">';
+      for (const [k, v] of Object.entries(headers)) {
+        html += `
+          <div class="header-row">
+            <span class="header-key">${escapeHtml(k)}</span>
+            <span class="header-value">${escapeHtml(Array.isArray(v) ? v.join(', ') : String(v))}</span>
+          </div>
+        `;
+      }
+      html += '</div>';
+      return html;
+    }
+
+    function renderBody(body, encoding) {
+      if (!body) {
+        return '<div style="font-style:italic; font-size:12px; color: var(--text-muted); margin-top:2px;">No body data</div>';
+      }
+      let text = body;
+      if (encoding === 'base64') {
+        try {
+          text = atob(body);
+        } catch (e) {
+          return `<div class="details-pre-box">${body}</div>`;
+        }
+      }
+      try {
+        const parsed = JSON.parse(text);
+        return `<div class="details-pre-box" style="color: var(--success);">${escapeHtml(JSON.stringify(parsed, null, 2))}</div>`;
+      } catch (e) {
+        return `<div class="details-pre-box">${escapeHtml(text)}</div>`;
+      }
+    }
+
+    // --- CACHE RULES CRUD ---
+
+    // Load active rules
+    async function loadRules() {
+      try {
+        const response = await fetch('/rules');
+        rulesData = await response.json();
+        renderRules();
+      } catch (error) {
+        document.getElementById('rules-container').innerHTML = `
+          <div style="text-align: center; color: var(--danger); padding: 30px;">
+            <i class="fa-solid fa-triangle-exclamation"></i> Failed to load cache rules.
+          </div>
+        `;
+      }
+    }
+
+    // Render rule cards
+    function renderRules() {
+      const container = document.getElementById('rules-container');
+      container.innerHTML = '';
+
+      if (rulesData.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; color: var(--text-muted); padding: 30px;">
+            No cache rules defined. Click "Add Rule" to create one.
+          </div>
+        `;
+        return;
+      }
+
+      rulesData.forEach(rule => {
+        const card = document.createElement('div');
+        card.className = 'rule-card';
+
+        const cacheTagClass = rule.cache ? 'badge-success' : 'badge-danger';
+        const cacheTagText = rule.cache ? 'Cache: ON' : 'Cache: OFF';
+        
+        const ruleNameClean = escapeHtml(rule.name);
+        const groupByClean = rule.groupBy ? escapeHtml(rule.groupBy) : 'full';
+
+        card.innerHTML = `
+          <div class="rule-card-header">
+            <span class="rule-title">${ruleNameClean}</span>
+            <div style="display: flex; gap: 8px; align-items:center;">
+              <span class="rule-meta-tag ${cacheTagClass}">${cacheTagText}</span>
+              <span class="rule-meta-tag" style="background-color: var(--accent-light); color: var(--accent);">Group: ${groupByClean}</span>
+              <button class="btn" style="padding: 4px 8px; font-size:11px;" onclick="openEditRuleModal('${encodeURIComponent(rule.name)}')">
+                <i class="fa-solid fa-pen-to-square"></i> Edit
+              </button>
+              <button class="btn btn-danger" style="padding: 4px 8px; font-size:11px;" onclick="deleteRule('${encodeURIComponent(rule.name)}')">
+                <i class="fa-solid fa-trash-can"></i> Delete
+              </button>
+            </div>
+          </div>
+          <div class="rule-match-details">
+            <div class="rule-match-item">
+              <span class="rule-match-label">Methods</span>
+              <span class="rule-match-val">${renderMatchArray(rule.match?.method)}</span>
+            </div>
+            <div class="rule-match-item">
+              <span class="rule-match-label">Domains</span>
+              <span class="rule-match-val">${renderMatchArray(rule.match?.domains)}</span>
+            </div>
+            <div class="rule-match-item">
+              <span class="rule-match-label">Paths</span>
+              <span class="rule-match-val">${renderMatchArray(rule.match?.paths)}</span>
+            </div>
+            <div class="rule-match-item">
+              <span class="rule-match-label">Headers</span>
+              <span class="rule-match-val">${renderMatchObject(rule.match?.headers)}</span>
+            </div>
+            <div class="rule-match-item">
+              <span class="rule-match-label">Query</span>
+              <span class="rule-match-val">${renderMatchObject(rule.match?.query)}</span>
+            </div>
+            <div class="rule-match-item">
+              <span class="rule-match-label">Body Pattern</span>
+              <span class="rule-match-val">${rule.match?.body ? escapeHtml(rule.match.body) : '—'}</span>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderMatchArray(arr) {
+      if (!arr || arr.length === 0) return '—';
+      return arr.map(x => escapeHtml(String(x))).join(', ');
+    }
+
+    function renderMatchObject(obj) {
+      if (!obj || Object.keys(obj).length === 0) return '—';
+      return Object.entries(obj).map(([k, v]) => `${escapeHtml(k)}: ${escapeHtml(String(v))}`).join(' | ');
+    }
+
+    // Delete cache rule
+    async function deleteRule(name) {
+      const decodedName = decodeURIComponent(name);
+      showConfirmModal(`Are you sure you want to delete rule "${decodedName}"?`, async () => {
+        try {
+          const response = await fetch('/rules/' + name, { method: 'DELETE' });
+          if (!response.ok) throw new Error('Failed to delete rule.');
+          
+          showNotification('Rule deleted successfully.');
+          loadRules();
+          loadStatus();
+        } catch (error) {
+          showNotification('Error deleting rule: ' + error.message, false);
+        }
+      });
+    }
+
+    // Modal Add Rule config
+    function openAddRuleModal() {
+      editingRuleName = null;
+      document.getElementById('rule-modal-title').innerHTML = '<i class="fa-solid fa-plus-circle"></i> New Cache Rule';
+      document.getElementById('rule-submit-btn').textContent = 'Add Rule';
+      document.getElementById('rule-name').disabled = false;
+      document.getElementById('rule-form').reset();
+      
+      openModal('rule-modal');
+    }
+
+    // Modal Edit Rule config
+    function openEditRuleModal(nameEncoded) {
+      const name = decodeURIComponent(nameEncoded);
+      const rule = rulesData.find(r => r.name === name);
+      if (!rule) return;
+
+      editingRuleName = name;
+      document.getElementById('rule-modal-title').innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Edit Cache Rule';
+      document.getElementById('rule-submit-btn').textContent = 'Save Changes';
+      
+      document.getElementById('rule-name').value = rule.name;
+      document.getElementById('rule-name').disabled = true; // Name can't be modified in API PUT
+      document.getElementById('rule-cache').checked = rule.cache;
+      document.getElementById('rule-groupby').value = rule.groupBy || 'full';
+
+      // Select option dynamic matching logic for custom method lists
+      const methodVal = rule.match?.method ? rule.match.method.join(',') : '';
+      const select = document.getElementById('rule-methods');
+      
+      let optionExists = false;
+      for (let i = 0; i < select.options.length; i++) {
+        if (select.options[i].value === methodVal) {
+          optionExists = true;
+          break;
+        }
+      }
+      
+      if (!optionExists && methodVal) {
+        const opt = document.createElement('option');
+        opt.value = methodVal;
+        opt.textContent = rule.match.method.join(' & ');
+        select.appendChild(opt);
+      }
+      select.value = methodVal;
+
+      document.getElementById('rule-domains').value = rule.match?.domains ? rule.match.domains.join(', ') : '';
+      document.getElementById('rule-paths').value = rule.match?.paths ? rule.match.paths.join(', ') : '';
+      
+      let headersText = '';
+      if (rule.match?.headers) {
+        headersText = Object.entries(rule.match.headers).map(([k, v]) => `${k}: ${v}`).join('\n');
+      }
+      document.getElementById('rule-headers').value = headersText;
+
+      let queryText = '';
+      if (rule.match?.query) {
+        queryText = Object.entries(rule.match.query).map(([k, v]) => `${k}: ${v}`).join('\n');
+      }
+      document.getElementById('rule-query').value = queryText;
+
+      document.getElementById('rule-body').value = rule.match?.body || '';
+
+      openModal('rule-modal');
+    }
+
+    // Submit new/edited rule
+    async function saveRule(event) {
+      event.preventDefault();
+      
+      const name = document.getElementById('rule-name').value;
+      const cache = document.getElementById('rule-cache').checked;
+      const groupBy = document.getElementById('rule-groupby').value;
+
+      const methodVal = document.getElementById('rule-methods').value;
+      const method = methodVal ? methodVal.split(',') : [];
+
+      const parseCsv = (val) => val.trim() ? val.split(',').map(x => x.trim()).filter(Boolean) : undefined;
+      const domains = parseCsv(document.getElementById('rule-domains').value);
+      const paths = parseCsv(document.getElementById('rule-paths').value);
+
+      const parseKv = (val) => {
+        if (!val.trim()) return undefined;
+        const result = {};
+        val.split('\n').forEach(line => {
+          const idx = line.indexOf(':');
+          if (idx !== -1) {
+            const k = line.substring(0, idx).trim();
+            const v = line.substring(idx + 1).trim();
+            if (k) result[k] = v;
+          }
+        });
+        return Object.keys(result).length > 0 ? result : undefined;
+      };
+
+      const headers = parseKv(document.getElementById('rule-headers').value);
+      const query = parseKv(document.getElementById('rule-query').value);
+
+      const bodyVal = document.getElementById('rule-body').value.trim();
+      const body = bodyVal || undefined;
+
+      const rulePayload = {
+        name,
+        cache,
+        groupBy,
+        match: {
+          method,
+          ...(domains && { domains }),
+          ...(paths && { paths }),
+          ...(headers && { headers }),
+          ...(query && { query }),
+          ...(body && { body }),
+        }
+      };
+
+      try {
+        let response;
+        if (editingRuleName) {
+          // Send PUT
+          response = await fetch('/rules/' + encodeURIComponent(editingRuleName), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(rulePayload)
+          });
+        } else {
+          // Send POST
+          response = await fetch('/rules', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(rulePayload)
+          });
+        }
+
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error || 'Failed to save rule.');
+        }
+
+        showNotification('Rule saved successfully!');
+        closeModal('rule-modal');
+        loadRules();
+        loadStatus();
+        
+        document.getElementById('rule-form').reset();
+      } catch (error) {
+        alert('Error saving rule: ' + error.message);
+      }
+    }
+
+    // Modal open/close helpers
+    function openModal(id) {
+      document.getElementById(id).style.display = 'flex';
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).style.display = 'none';
+    }
+
+    // HTML escape helper
+    function escapeHtml(text) {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
+    // Poll status/stats from API every 30s (cache counts, etc.)
+    setInterval(loadStatus, 30000);
+
+    // Tick uptime display locally every second for a live counter
+    setInterval(tickUptime, 1000);
+
+    // Initial load
+    initTheme();
+    loadStatus(); // First sync with server immediately
     loadCache();
   </script>
 </body>

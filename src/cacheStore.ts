@@ -156,6 +156,26 @@ export class CacheStore {
     await this.saveManifest();
     this.logger?.info('CacheStore.set entry', { key, id, requestUrl: storedEntry.request.url });
   }
+  async delete(key: string): Promise<boolean> {
+    const item = this.manifest[key];
+    if (!item) {
+      return false;
+    }
+
+    const entryPath = this.getEntryPath(item.id);
+    try {
+      if (fs.existsSync(entryPath)) {
+        await fsPromises.unlink(entryPath);
+      }
+    } catch (error) {
+      this.logger?.warn('CacheStore.delete failed to delete file', { key, entryPath, error });
+    }
+
+    delete this.manifest[key];
+    await this.saveManifest();
+    this.logger?.info('CacheStore.delete entry', { key, id: item.id });
+    return true;
+  }
   async peek(key: string): Promise<CacheEntry | null> {
     const item = this.manifest[key];
     if (!item) {

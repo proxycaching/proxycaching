@@ -91,9 +91,42 @@ Real-world usage examples are in the [`/examples`](./examples) directory:
 The built-in admin panel lets you:
 
 - Browse all cached requests with timestamps and hit counts
-- Inspect request/response details
-- Manage cache rules in real time
+- Inspect request and response details for each cached entry
+- Manage cache rules in real time with rule editors and grouping options
+- View proxy health at a glance with status cards and cache metrics
 - Export or install the MITM CA certificate
+
+The new admin UI includes:
+
+- A modern dashboard with server status, uptime, cache entries, cache size, and MITM CA controls
+- Tabbed views for the cache store and cache rules
+- Search and refresh controls for the cache store list
+- Cache entry details modal showing request headers, request body, response metadata, hit count, and delete action
+- Rule editor modal for creating and updating rules by method, domain, path, headers, query params, and body pattern
+
+**Cache Store View**
+
+The main cache store screen shows all cached request keys with method, URL, hit count, and last access time. Use the search field and refresh button to quickly locate entries.
+
+![Cache Store View](media/Store.png)
+
+**Cache Entry Details**
+
+Click any cache row to open a detailed modal with request headers, request body, response metadata, hit count, and a delete action.
+
+![Cache Entry Details](media/Store_details.png)
+
+**Cache Rules View**
+
+The rules list displays active cache rules, including method, domain, paths, header filters, query filters, and grouping mode.
+
+![Cache Rules View](media/Rules.png)
+
+**Cache Rule Editor**
+
+The editor modal allows fine-grained rule creation and updates with method selection, domain/path matching, required headers, query parameters, and body pattern support.
+
+![Cache Rule Editor](media/Rules_details.png)
 
 Available at **http://localhost:8081** when `proxy.adminEnabled` is `true`.
 
